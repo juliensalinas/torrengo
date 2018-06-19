@@ -1,12 +1,20 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/juliensalinas/torrengo/arc"
 )
 
+// func checkInput(in string) error {
+
+// 	if in == "" {
+// 		return fmt.Errorf("user input should not be empty")
+// 	}
+
+// 	return nil
+// }
+
 func main() {
-	fmt.Println("Hello main!")
-	arc.SayHello()
+
+	arc.Search("Alice in Wonderlands")
+
 }
