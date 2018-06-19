@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/juliensalinas/torrengo/arc"
 )
 
@@ -15,6 +17,13 @@ import (
 
 func main() {
 
-	arc.Search("Alice in Wonderlands")
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	torrents, err := arc.Search("Dumas")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("%v", torrents)
 
 }

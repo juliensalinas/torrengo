@@ -2,14 +2,18 @@
 // on the first page.
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
+// Parsing is achieved thanks to the GoQuery library.
 package arc
 
 import (
-	"io/ioutil"
+	"fmt"
+	"io"
 	"log"
-	// "fmt"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const baseURL string = "https://archive.org"
@@ -28,7 +32,7 @@ func buildURL(in string) (string, error) {
 	var URL *url.URL
 	URL, err := url.Parse(baseURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error during url parsing: %v", err)
 	}
 
 	// Create base path of URL.
@@ -45,11 +49,11 @@ func buildURL(in string) (string, error) {
 // fetch opens a url and returns the resulting html page.
 // Cannot use the straight http.Get function because need to
 // modify headers in order to set a fake user-agent.
-func fetch(url string) ([]byte, error) {
+func fetch(url string) (*http.Response, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create request: %v", err)
 	}
 
 	// Set the fake user agent.
@@ -57,45 +61,74 @@ func fetch(url string) ([]byte, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not launch request: %v", err)
 	}
 
-	return b, nil
+	if resp.StatusCode != 200 {
+		resp.Body.Close()
+		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
+	}
+
+	return resp, nil
 }
 
 // parse parses an html slice of bytes and returns a clean list
 // of torrents found in this page.
-func parse(resp []byte) ([][]string, error) {
+func parse(r io.Reader) ([][2]string, error) {
 
-	return nil, nil
+	// Load html response into GoQuery.
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
+	}
 
+	// torrents stores a list of torrents made up of the torrent description url
+	// and its title.
+	var torrents [][2]string
+
+	doc.Find(".results ").Children().Each(func(i int, s *goquery.Selection) {
+		// Get path to torrent description page from a "<a>" tag located inside a
+		// "class=C234"
+		path, ok := s.Find(".C234 a").Attr("href")
+		// If no description url found, stop here.
+		if ok {
+			// Get title from a "class=ttl" tag.
+			// Remove dirty spaces before and after title.
+			title := strings.TrimSpace(s.Find(".ttl").Text())
+			// Build the real url.
+			url := baseURL + path
+			// Store results.
+			torrent := [2]string{url, title}
+			torrents = append(torrents, torrent)
+		}
+	})
+
+	return torrents, nil
 }
 
 // Search takes a user search as a parameter and
 // returns clean torrent information fetched from archive.org
-func Search(in string) ([][]string, error) {
+func Search(in string) ([][2]string, error) {
 
+	// Build url.
 	url, err := buildURL(in)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while building url: %v", err)
 	}
-	log.Printf("Successfully built url: %s\n", url)
+	log.Printf("successfully built url: %s\n", url)
 
+	// Fetch url.
 	resp, err := fetch(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-	log.Printf("Successfully fetched the following content: \n%s\n", resp)
+	defer resp.Body.Close()
+	log.Printf("successfully fetched html content\n")
 
-	torrents, err := parse(resp)
+	// Parse html response.
+	torrents, err := parse(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while parsing results: %v", err)
 	}
 
 	return torrents, nil
