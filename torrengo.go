@@ -10,6 +10,18 @@ import (
 	"github.com/juliensalinas/torrengo/arc"
 )
 
+type torrent struct {
+	fileURL  string
+	magnet   string
+	descURL  string // description url containing more info about the torrent including the torrent file address.
+	name     string
+	size     string
+	seeders  int
+	leechers int
+	uplDate  string // date of upload.
+	source   string // website the torrent is coming from.
+}
+
 func clean(in string) (string, error) {
 
 	// Clean user input by removing useless spaces.
@@ -47,13 +59,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var torrents [][2]string
+	var torrents []torrent
 
 	switch *websitePtr {
 	case "archive":
-		torrents, err = arc.Search(clIn)
+		arcTorrents, err := arc.Search(clIn)
 		if err != nil {
 			log.Fatal(err)
+		}
+		for _, arcTorrent := range arcTorrents {
+			t := torrent{
+				descURL: arcTorrent.DescURL,
+				name:    arcTorrent.Name,
+			}
+			torrents = append(torrents, t)
 		}
 	case "all":
 		fmt.Println("all")

@@ -1,8 +1,13 @@
-// Package arc searches archive.org and returns a clean map of torrents found
+// Package arc searches archive.org and returns a clean list of torrents found
 // on the first page.
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
 // Parsing is achieved thanks to the GoQuery library.
+//
+// Input passed to the Search() function is a search string.
+// Output is a slice of maps made up of 2 keys:
+// descUrl: the torrent description dedicated url
+// name: the torrent name
 package arc
 
 import (
@@ -18,6 +23,12 @@ import (
 
 const baseURL string = "https://archive.org"
 const userAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
+
+// Torrent contains meta information about the torrent.
+type Torrent struct {
+	DescURL string // description url containing more info about the torrent including the torrent file address.
+	Name    string
+}
 
 // buildURL encodes the user search keywords into a proper url.
 // A typical final url looks like:
@@ -74,7 +85,7 @@ func fetch(url string) (*http.Response, error) {
 
 // parse parses an html slice of bytes and returns a clean list
 // of torrents found in this page.
-func parse(r io.Reader) ([][2]string, error) {
+func parse(r io.Reader) ([]Torrent, error) {
 
 	// Load html response into GoQuery.
 	doc, err := goquery.NewDocumentFromReader(r)
@@ -83,8 +94,8 @@ func parse(r io.Reader) ([][2]string, error) {
 	}
 
 	// torrents stores a list of torrents made up of the torrent description url
-	// and its title.
-	var torrents [][2]string
+	// and its name.
+	var torrents []Torrent
 
 	doc.Find(".results ").Children().Each(func(i int, s *goquery.Selection) {
 		// Get path to torrent description page from a "<a>" tag located inside a
@@ -92,14 +103,17 @@ func parse(r io.Reader) ([][2]string, error) {
 		path, ok := s.Find(".C234 a").Attr("href")
 		// If no description url found, stop here.
 		if ok {
-			// Get title from a "class=ttl" tag.
+			// Get name from a "class=ttl" tag.
 			// Remove dirty spaces before and after title.
-			title := strings.TrimSpace(s.Find(".ttl").Text())
+			name := strings.TrimSpace(s.Find(".ttl").Text())
 			// Build the real url.
 			url := baseURL + path
 			// Store results.
-			torrent := [2]string{url, title}
-			torrents = append(torrents, torrent)
+			t := Torrent{
+				DescURL: url,
+				Name:    name,
+			}
+			torrents = append(torrents, t)
 		}
 	})
 
@@ -108,7 +122,7 @@ func parse(r io.Reader) ([][2]string, error) {
 
 // Search takes a user search as a parameter and
 // returns clean torrent information fetched from archive.org
-func Search(in string) ([][2]string, error) {
+func Search(in string) ([]Torrent, error) {
 
 	// Build url.
 	url, err := buildURL(in)
