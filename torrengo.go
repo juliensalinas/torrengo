@@ -14,22 +14,25 @@ import (
 )
 
 type torrent struct {
-	fileURL  string
-	magnet   string
-	descURL  string // description url containing more info about the torrent including the torrent file address.
+	fileURL string
+	magnet  string
+	// Description url containing more info about the torrent including the torrent file address
+	descURL  string
 	name     string
 	size     string
 	seeders  string
 	leechers string
-	uplDate  string // date of upload.
-	source   string // website the torrent is coming from.
+	// Date of upload
+	uplDate string
+	// Website the torrent is coming from
+	source string
 }
 
 func clean(in string) (string, error) {
-	// Clean user input by removing useless spaces.
+	// Clean user input by removing useless spaces
 	clIn := strings.TrimSpace(in)
 
-	// If user input is empty raise an error.
+	// If user input is empty raise an error
 	if clIn == "" {
 		return "", fmt.Errorf("user input should not be empty")
 	}
@@ -37,9 +40,9 @@ func clean(in string) (string, error) {
 	return clIn, nil
 }
 
-// render renders torrents in a tabular user-friendly way with colors in terminal.
+// render renders torrents in a tabular user-friendly way with colors in terminal
 func render(torrents []torrent) {
-	// Turn type []torrent to type [][]string because this is what tablewriter expects.
+	// Turn type []torrent to type [][]string because this is what tablewriter expects
 	var renderedTorrents [][]string
 	for i, t := range torrents {
 		renderedTorrent := []string{
@@ -54,7 +57,7 @@ func render(torrents []torrent) {
 		renderedTorrents = append(renderedTorrents, renderedTorrent)
 	}
 
-	// Render results using tablewriter.
+	// Render results using tablewriter
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Index", "Name", "Size", "Seeders", "Leechers", "Date of upload", "Source"})
 	table.SetRowLine(true)
@@ -72,20 +75,20 @@ func render(torrents []torrent) {
 }
 
 func main() {
-	// Show line number during logging.
+	// Show line number during logging
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	// Get command line flags and arguments.
+	// Get command line flags and arguments
 	websitePtr := flag.String("w", "all", "website you want to search: archive | all")
 	flag.Parse()
 	args := flag.Args()
 
-	// If no command line argument is supplied, then we stop here.
+	// If no command line argument is supplied, then we stop here
 	if len(args) == 0 {
 		os.Exit(1)
 	}
 
-	// Concatenate all arguments into one single string in case user does not use quotes.
+	// Concatenate all arguments into one single string in case user does not use quotes
 	in := strings.Join(args, " ")
 
 	// Clean user input.
@@ -96,7 +99,7 @@ func main() {
 
 	var torrents []torrent
 
-	// Search torrents.
+	// Search torrents
 	switch *websitePtr {
 	case "archive":
 		arcTorrents, err := arc.Search(clIn)
@@ -115,12 +118,12 @@ func main() {
 		fmt.Println("all")
 	}
 
-	// Sort torrents based on number of seeders (top down).
+	// Sort torrents based on number of seeders (top down)
 	sort.Slice(torrents, func(i, j int) bool {
 		return torrents[i].seeders > torrents[j].seeders
 	})
 
-	// Render the list of results to user in terminal.
+	// Render the list of results to user in terminal
 	render(torrents)
 
 }
