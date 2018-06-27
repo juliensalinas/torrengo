@@ -13,6 +13,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// torrent stores all the final torrent details
 type torrent struct {
 	fileURL string
 	magnet  string
@@ -28,16 +29,31 @@ type torrent struct {
 	source string
 }
 
-func clean(in string) (string, error) {
+// search represents the user search
+type search struct {
+	in             string
+	out            []torrent
+	sourceToLookup string
+}
+
+// cleanIn cleans the user search input
+func (s *search) cleanIn() error {
 	// Clean user input by removing useless spaces
-	clIn := strings.TrimSpace(in)
+	strings.TrimSpace(s.in)
 
 	// If user input is empty raise an error
-	if clIn == "" {
-		return "", fmt.Errorf("user input should not be empty")
+	if s.in == "" {
+		return fmt.Errorf("user input should not be empty")
 	}
 
-	return clIn, nil
+	return nil
+}
+
+// sortOut sorts torrents list based on number of seeders (top down)
+func (s *search) sortOut() {
+	sort.Slice(s.out, func(i, j int) bool {
+		return s.out[i].seeders > s.out[j].seeders
+	})
 }
 
 // render renders torrents in a tabular user-friendly way with colors in terminal
@@ -88,21 +104,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Concatenate all arguments into one single string in case user does not use quotes
-	in := strings.Join(args, " ")
+	// Initialize the user search with the user input and sourceToLookup, and out is zeroed.
+	// Concatenate all input arguments into one single string in case user does not use quotes.
+	s := search{
+		in:             strings.Join(args, " "),
+		sourceToLookup: *websitePtr,
+	}
 
-	// Clean user input.
-	clIn, err := clean(in)
+	// Clean user input
+	err := s.cleanIn()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var torrents []torrent
-
 	// Search torrents
-	switch *websitePtr {
+	switch s.sourceToLookup {
 	case "archive":
-		arcTorrents, err := arc.Search(clIn)
+		arcTorrents, err := arc.Lookup(s.in)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -112,18 +130,16 @@ func main() {
 				name:    arcTorrent.Name,
 				source:  "Archive",
 			}
-			torrents = append(torrents, t)
+			s.out = append(s.out, t)
 		}
 	case "all":
 		fmt.Println("all")
 	}
 
-	// Sort torrents based on number of seeders (top down)
-	sort.Slice(torrents, func(i, j int) bool {
-		return torrents[i].seeders > torrents[j].seeders
-	})
+	// Sort results (on seeders)
+	s.sortOut()
 
 	// Render the list of results to user in terminal
-	render(torrents)
+	render(s.out)
 
 }

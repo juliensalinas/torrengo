@@ -121,9 +121,9 @@ func parse(r io.Reader) ([]Torrent, error) {
 	return torrents, nil
 }
 
-// Search takes a user search as a parameter and
+// Lookup takes a user search as a parameter and
 // returns clean torrent information fetched from archive.org
-func Search(in string) ([]Torrent, error) {
+func Lookup(in string) ([]Torrent, error) {
 
 	// Build url
 	url, err := buildURL(in)
