@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
@@ -13,7 +14,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-// torrent stores all the final torrent details
+// torrent contains meta information about the torrent
 type torrent struct {
 	fileURL string
 	magnet  string
@@ -133,7 +134,7 @@ func main() {
 			s.out = append(s.out, t)
 		}
 	case "all":
-		fmt.Println("all")
+		fmt.Println("Lookup all")
 	}
 
 	// Sort results (on seeders)
@@ -141,5 +142,35 @@ func main() {
 
 	// Render the list of results to user in terminal
 	render(s.out)
+
+	// Read from user input the index of torrent we want to download
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Please select a torrent to download (enter its index): ")
+	var index int
+	for {
+		indexStr, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Could not read your input, please try again (should be an integer):")
+			continue
+		}
+		index, err = strconv.Atoi(strings.TrimSuffix(indexStr, "\n"))
+		if err != nil {
+			fmt.Println("Please enter an integer:")
+			continue
+		}
+		break
+	}
+
+	// Download torrent
+	switch s.sourceToLookup {
+	case "archive":
+		filePath, err := arc.Download(s.out[index].descURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Here is your torrent file: %s\n", filePath)
+	case "all":
+		fmt.Println("Download all")
+	}
 
 }

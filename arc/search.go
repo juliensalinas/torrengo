@@ -34,7 +34,7 @@ type Torrent struct {
 // buildURL encodes the user search keywords into a proper url.
 // A typical final url looks like:
 // https://archive.org/search.php?query=Dumas%20AND%20format%3A%22Archive%20BitTorrent%22
-func buildURL(in string) (string, error) {
+func buildSearchURL(in string) (string, error) {
 	// Add the following suffix to the query in order for archive.org
 	// to return torrents only
 	in += ` AND format:"Archive BitTorrent"`
@@ -86,7 +86,7 @@ func fetch(url string) (*http.Response, error) {
 
 // parse parses an html slice of bytes and returns a clean list
 // of torrents found in this page
-func parse(r io.Reader) ([]Torrent, error) {
+func parseSearchPage(r io.Reader) ([]Torrent, error) {
 
 	// Load html response into GoQuery
 	doc, err := goquery.NewDocumentFromReader(r)
@@ -126,7 +126,7 @@ func parse(r io.Reader) ([]Torrent, error) {
 func Lookup(in string) ([]Torrent, error) {
 
 	// Build url
-	url, err := buildURL(in)
+	url, err := buildSearchURL(in)
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
@@ -141,9 +141,9 @@ func Lookup(in string) ([]Torrent, error) {
 	log.Printf("successfully fetched html content\n")
 
 	// Parse html response
-	torrents, err := parse(resp.Body)
+	torrents, err := parseSearchPage(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error while parsing results: %v", err)
+		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}
 
 	return torrents, nil
