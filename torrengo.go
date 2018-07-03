@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -161,16 +162,33 @@ func main() {
 		break
 	}
 
+	var filePath string
+
 	// Download torrent
 	switch s.sourceToLookup {
 	case "archive":
-		filePath, err := arc.Download(s.out[index].descURL)
+		filePath, err = arc.Download(s.out[index].descURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("Here is your torrent file: %s\n", filePath)
 	case "all":
 		fmt.Println("Download all")
+	}
+
+	// Open torrent in client
+	switch s.sourceToLookup {
+	case "archive":
+		log.Printf("open %s with torrent client.",filePath)
+		fmt.Println("Opening torrent in client...")
+		cmd := exec.Command("deluge", filePath)
+		err := cmd.Run()
+		if err != nil {
+			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n",err)
+		}
+	case "all":
+		fmt.Println("Open all")
+
 	}
 
 }
