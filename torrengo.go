@@ -197,7 +197,9 @@ func main() {
 		}).Debug("Opening file with torrent client")
 		fmt.Println("Opening torrent in client...")
 		cmd := exec.Command("deluge", filePath)
-		err := cmd.Run()
+		// Use Start() instead of Run() because do not want to wait for the torrent
+		// client process to complete (detached process).
+		err := cmd.Start()
 		if err != nil {
 			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
 		}
