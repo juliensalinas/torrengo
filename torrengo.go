@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/onrik/logrus/filename"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/juliensalinas/torrengo/arc"
 	"github.com/olekukonko/tablewriter"
@@ -92,10 +94,19 @@ func render(torrents []torrent) {
 	table.Render()
 }
 
-func main() {
-	// Show line number during logging
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+func init() {
+	// Log as JSON instead of the default ASCII formatter
+	log.SetFormatter(&log.JSONFormatter{})
 
+	// Only log the warning severity or above
+	log.SetLevel(log.DebugLevel)
+
+	// Log filename and line number.
+	// Should be removed from production because adds a performance cost.
+	log.AddHook(filename.NewHook())
+}
+
+func main() {
 	// Get command line flags and arguments
 	websitePtr := flag.String("w", "all", "website you want to search: archive | all")
 	flag.Parse()
@@ -179,12 +190,16 @@ func main() {
 	// Open torrent in client
 	switch s.sourceToLookup {
 	case "archive":
-		log.Printf("open %s with torrent client.",filePath)
+		log.Debug("open %s with torrent client.", filePath)
+		log.WithFields(log.Fields{
+			"filePath": filePath,
+			"client":   "Deluge",
+		}).Debug("Opening file with torrent client")
 		fmt.Println("Opening torrent in client...")
 		cmd := exec.Command("deluge", filePath)
 		err := cmd.Run()
 		if err != nil {
-			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n",err)
+			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
 		}
 	case "all":
 		fmt.Println("Open all")

@@ -3,13 +3,13 @@ package arc
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/sirupsen/logrus"
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
@@ -87,21 +87,25 @@ func Download(descURL string) (string, error) {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
-	log.Printf("successfully fetched html content\n")
+	log.Debug("Successfully fetched html content.")
 
 	// Parse html response
 	fileURL, err := parseDescPage(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
-	log.Printf("successfully fetched torrent file url: %s\n", fileURL)
+	log.WithFields(log.Fields{
+		"url": fileURL,
+	}).Debug("Successfully fetched torrent file url.")
 
 	// Download torrent
 	filePath, err := dlFile(fileURL)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}
-	log.Printf("successfully dowloaded torrent file at the following location: %s\n", filePath)
+	log.WithFields(log.Fields{
+		"filePath": filePath,
+	}).Debug("Successfully dowloaded torrent file.")
 
 	return filePath, nil
 }
