@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/juliensalinas/torrengo/arc"
+	"github.com/juliensalinas/torrengo/td"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -22,9 +23,10 @@ type torrent struct {
 	fileURL string
 	magnet  string
 	// Description url containing more info about the torrent including the torrent file address
-	descURL  string
-	name     string
-	size     string
+	descURL string
+	name    string
+	size    string
+	// seeders and leechers could be int but tablewriter expects strings
 	seeders  string
 	leechers string
 	// Date of upload
@@ -106,9 +108,10 @@ func init() {
 	log.AddHook(filename.NewHook())
 }
 
+// TODO: improve interaction with user
 func main() {
 	// Get command line flags and arguments
-	websitePtr := flag.String("w", "all", "website you want to search: archive | all")
+	websitePtr := flag.String("w", "all", "website you want to search: archive | torrentdownloads | all")
 	flag.Parse()
 	args := flag.Args()
 
@@ -145,11 +148,28 @@ func main() {
 			}
 			s.out = append(s.out, t)
 		}
+	case "torrentdownloads":
+		tdTorrents, err := td.Lookup(s.in)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, tdTorrent := range tdTorrents {
+			t := torrent{
+				descURL:  tdTorrent.DescURL,
+				name:     tdTorrent.Name,
+				size:     tdTorrent.Size,
+				leechers: tdTorrent.Leechers,
+				seeders:  tdTorrent.Seeders,
+				source:   "TorrentDownloads",
+			}
+			s.out = append(s.out, t)
+		}
 	case "all":
 		fmt.Println("Lookup all")
 	}
 
 	// Sort results (on seeders)
+	// TODO: broken. Need to convert strings to int.
 	s.sortOut()
 
 	// Render the list of results to user in terminal
@@ -183,6 +203,8 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("Here is your torrent file: %s\n", filePath)
+	case "torrentdownloads":
+
 	case "all":
 		fmt.Println("Download all")
 	}
@@ -203,6 +225,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
 		}
+	case "torrentdownloads":
 	case "all":
 		fmt.Println("Open all")
 
