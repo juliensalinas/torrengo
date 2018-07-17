@@ -13,27 +13,37 @@ import (
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
-func parseDescPage(r io.Reader) (string, error) {
+// + the magnet link
+func parseDescPage(r io.Reader) (string, string, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
-		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
+		return "", "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
 	var fileURL string
+	var magnet string
 
 	doc.Find("img[alt='Download torrent']").Each(func(i int, s *goquery.Selection) {
+		// Get the torrent url from a tag containing an image whose alt attribute is
+		// "Download torrent"
 		path, ok := s.Parent().Attr("href")
 		if ok {
 			fileURL = baseURL + path
-			return
+		}
+	})
+	doc.Find("a:contains('Magnet Link')").Each(func(i int, s *goquery.Selection) {
+		// Get the magnet link from an <a> tag containing a "Magnet Link" text
+		path, ok := s.Attr("href")
+		if ok {
+			magnet = path
 		}
 	})
 
-	if fileURL == "" {
-		return "", fmt.Errorf("could not find a torrent file on the description page")
+	if fileURL == "" && magnet == "" {
+		return "", "", fmt.Errorf("could not find neither a torrent file nor a magnet link on the description page")
 	}
 
-	return fileURL, nil
+	return fileURL, magnet, nil
 }
 
 // dlFile downloads the torrent file
@@ -82,13 +92,25 @@ func Download(descURL string) (string, error) {
 	defer resp.Body.Close()
 	log.Debug("Successfully fetched html content.")
 
-	fileURL, err := parseDescPage(resp.Body)
+	fileURL, magnet, err := parseDescPage(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
-	log.WithFields(log.Fields{
-		"url": fileURL,
-	}).Debug("Successfully fetched torrent file url.")
+	switch {
+	case fileURL == "" && magnet != "":
+		log.WithFields(log.Fields{
+			"torrentURL": fileURL,
+		}).Debug("Could not find a torrent file but successfully fetched a magnet link on the description page")
+	case fileURL != "" && magnet == "":
+		log.WithFields(log.Fields{
+			"magnetLink": magnet,
+		}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
+	default:
+		log.WithFields(log.Fields{
+			"torrentURL": fileURL,
+			"magnetLink": magnet,
+		}).Debug("Successfully fetched a torrent file and a magnet link on the description page")
+	}
 
 	// filePath, err := dlFile(fileURL)
 	// if err != nil {
