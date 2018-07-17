@@ -204,7 +204,18 @@ func main() {
 		}
 		fmt.Printf("Here is your torrent file: %s\n", filePath)
 	case "torrentdownloads":
-		td.Download(s.out[index].descURL)
+		fileURL, magnet, err := td.ExtractTorAndMag(s.out[index].descURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+		switch {
+		case fileURL == "" && magnet != "":
+			// TODO Download magnet
+		case fileURL != "" && magnet == "":
+			// TODO Download file
+		default:
+			// TODO Ask user to choose between file dl and magnet dl
+		}
 	case "all":
 		fmt.Println("Download all")
 	}

@@ -14,14 +14,11 @@ import (
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
 // + the magnet link
-func parseDescPage(r io.Reader) (string, string, error) {
+func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return "", "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
-
-	var fileURL string
-	var magnet string
 
 	doc.Find("img[alt='Download torrent']").Each(func(i int, s *goquery.Selection) {
 		// Get the torrent url from a tag containing an image whose alt attribute is
@@ -82,19 +79,19 @@ func dlFile(fileURL string) (string, error) {
 	return filePath, nil
 }
 
-// Download opens the torrent description page and downloads the torrent
-// file. Returns the local path of downloaded torrent file.
-func Download(descURL string) (string, error) {
+// ExtractTorAndMag opens the torrent description page and extracts the torrent
+// file url + the magnet link
+func ExtractTorAndMag(descURL string) (fileURL string, magnet string, err error) {
 	resp, err := fetch(descURL)
 	if err != nil {
-		return "", fmt.Errorf("error while fetching url: %v", err)
+		return "", "", fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
 	log.Debug("Successfully fetched html content.")
 
-	fileURL, magnet, err := parseDescPage(resp.Body)
+	fileURL, magnet, err = parseDescPage(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
+		return "", "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
 	switch {
 	case fileURL == "" && magnet != "":
@@ -122,5 +119,5 @@ func Download(descURL string) (string, error) {
 
 	// return filePath, nil
 
-	return "", nil
+	return fileURL, magnet, nil
 }
