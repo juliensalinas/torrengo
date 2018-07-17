@@ -204,7 +204,7 @@ func main() {
 		}
 		fmt.Printf("Here is your torrent file: %s\n", filePath)
 	case "torrentdownloads":
-
+		td.Download(s.out[index].descURL)
 	case "all":
 		fmt.Println("Download all")
 	}
