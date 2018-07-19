@@ -77,9 +77,9 @@ func dlFile(fileURL string) (string, error) {
 	return filePath, nil
 }
 
-// Download opens the torrent description page and downloads the torrent
+// FindAndDlFile opens the torrent description page and downloads the torrent
 // file. Returns the local path of downloaded torrent file.
-func Download(descURL string) (string, error) {
+func FindAndDlFile(descURL string) (string, error) {
 	// Fetch url
 	resp, err := fetch(descURL)
 	if err != nil {

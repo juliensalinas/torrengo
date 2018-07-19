@@ -23,17 +23,11 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 	doc.Find("img[alt='Download torrent']").Each(func(i int, s *goquery.Selection) {
 		// Get the torrent url from a tag containing an image whose alt attribute is
 		// "Download torrent"
-		path, ok := s.Parent().Attr("href")
-		if ok {
-			fileURL = baseURL + path
-		}
+		fileURL, _ = s.Parent().Attr("href")
 	})
 	doc.Find("a:contains('Magnet Link')").Each(func(i int, s *goquery.Selection) {
 		// Get the magnet link from an <a> tag containing a "Magnet Link" text
-		path, ok := s.Attr("href")
-		if ok {
-			magnet = path
-		}
+		magnet, _ = s.Attr("href")
 	})
 
 	if fileURL == "" && magnet == "" {
@@ -43,8 +37,8 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 	return fileURL, magnet, nil
 }
 
-// dlFile downloads the torrent file
-func dlFile(fileURL string) (string, error) {
+// DlFile downloads the torrent file
+func DlFile(fileURL string) (string, error) {
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
 	fileName := s[len(s)-1]

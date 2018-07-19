@@ -33,7 +33,11 @@ type torrent struct {
 	uplDate string
 	// Website the torrent is coming from
 	source string
+	// Local path where torrent was saved
+	filePath string
 }
+
+var ft torrent
 
 // search represents the user search
 type search struct {
@@ -108,10 +112,30 @@ func init() {
 	log.AddHook(filename.NewHook())
 }
 
+// getAndShowMagnet retrieves and displays magnet to user
+func getAndShowMagnet() {
+	fmt.Printf("Here is your magnet link: %s\n", ft.magnet)
+}
+
+// getAndShowTorrent retrieves and displays torrent file to user
+func getAndShowTorrent() {
+	var err error
+	switch ft.source {
+	case "arc":
+		ft.filePath, err = arc.FindAndDlFile(ft.descURL)
+	case "td":
+		ft.filePath, err = td.DlFile(ft.descURL)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Here is your torrent file: %s\n", ft.filePath)
+}
+
 // TODO: improve interaction with user
 func main() {
 	// Get command line flags and arguments
-	websitePtr := flag.String("w", "all", "website you want to search: archive | torrentdownloads | all")
+	websitePtr := flag.String("w", "all", "website you want to search: arc | td | all")
 	flag.Parse()
 	args := flag.Args()
 
@@ -135,7 +159,7 @@ func main() {
 
 	// Search torrents
 	switch s.sourceToLookup {
-	case "archive":
+	case "arc":
 		arcTorrents, err := arc.Lookup(s.in)
 		if err != nil {
 			log.Fatal(err)
@@ -144,11 +168,11 @@ func main() {
 			t := torrent{
 				descURL: arcTorrent.DescURL,
 				name:    arcTorrent.Name,
-				source:  "Archive",
+				source:  "arc",
 			}
 			s.out = append(s.out, t)
 		}
-	case "torrentdownloads":
+	case "td":
 		tdTorrents, err := td.Lookup(s.in)
 		if err != nil {
 			log.Fatal(err)
@@ -160,7 +184,7 @@ func main() {
 				size:     tdTorrent.Size,
 				leechers: tdTorrent.Leechers,
 				seeders:  tdTorrent.Seeders,
-				source:   "TorrentDownloads",
+				source:   "td",
 			}
 			s.out = append(s.out, t)
 		}
@@ -193,50 +217,70 @@ func main() {
 		break
 	}
 
-	var filePath string
+	ft = s.out[index]
 
 	// Download torrent
 	switch s.sourceToLookup {
-	case "archive":
-		filePath, err = arc.Download(s.out[index].descURL)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Here is your torrent file: %s\n", filePath)
-	case "torrentdownloads":
-		fileURL, magnet, err := td.ExtractTorAndMag(s.out[index].descURL)
+	case "arc":
+		getAndShowTorrent()
+	case "td":
+		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 		switch {
-		case fileURL == "" && magnet != "":
-			// TODO Download magnet
-		case fileURL != "" && magnet == "":
-			// TODO Download file
+		case ft.fileURL == "" && ft.magnet != "":
+			getAndShowMagnet()
+		case ft.fileURL != "" && ft.magnet == "":
+			getAndShowTorrent()
 		default:
-			// TODO Ask user to choose between file dl and magnet dl
+			// Ask user to choose between file download and magnet download
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +
+				"\n1) Magnet link\n2) Torrent file")
+			var choice int
+			for {
+				choiceStr, err := reader.ReadString('\n')
+				if err != nil {
+					fmt.Println("Could not read your input, please enter your choice (1 or 2):")
+					continue
+				}
+				choice, err = strconv.Atoi(strings.TrimSuffix(choiceStr, "\n"))
+				if err != nil {
+					fmt.Println("Please enter an integer:")
+					continue
+				}
+				break
+			}
+			switch choice {
+			case 1:
+				getAndShowMagnet()
+			case 2:
+				getAndShowTorrent()
+
+			}
 		}
 	case "all":
-		fmt.Println("Download all")
+		fmt.Println("\nDownload all")
 	}
 
 	// Open torrent in client
 	switch s.sourceToLookup {
-	case "archive":
-		log.Debug("open %s with torrent client.", filePath)
+	case "arc":
+		log.Debug("open %s with torrent client.", ft.filePath)
 		log.WithFields(log.Fields{
-			"filePath": filePath,
+			"filePath": ft.filePath,
 			"client":   "Deluge",
 		}).Debug("Opening file with torrent client")
 		fmt.Println("Opening torrent in client...")
-		cmd := exec.Command("deluge", filePath)
+		cmd := exec.Command("deluge", ft.filePath)
 		// Use Start() instead of Run() because do not want to wait for the torrent
 		// client process to complete (detached process).
 		err := cmd.Start()
 		if err != nil {
 			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
 		}
-	case "torrentdownloads":
+	case "td":
 	case "all":
 		fmt.Println("Open all")
 
