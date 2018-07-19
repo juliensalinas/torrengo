@@ -23,12 +23,11 @@ type torrent struct {
 	fileURL string
 	magnet  string
 	// Description url containing more info about the torrent including the torrent file address
-	descURL string
-	name    string
-	size    string
-	// seeders and leechers could be int but tablewriter expects strings
-	seeders  string
-	leechers string
+	descURL  string
+	name     string
+	size     string
+	seeders  int
+	leechers int
 	// Date of upload
 	uplDate string
 	// Website the torrent is coming from
@@ -71,12 +70,14 @@ func render(torrents []torrent) {
 	// Turn type []torrent to type [][]string because this is what tablewriter expects
 	var renderedTorrents [][]string
 	for i, t := range torrents {
+		seedersStr := strconv.Itoa(t.seeders)
+		leechersStr := strconv.Itoa(t.leechers)
 		renderedTorrent := []string{
 			strconv.Itoa(i),
 			t.name,
 			t.size,
-			t.seeders,
-			t.leechers,
+			seedersStr,
+			leechersStr,
 			t.uplDate,
 			t.source,
 		}
@@ -193,7 +194,6 @@ func main() {
 	}
 
 	// Sort results (on seeders)
-	// TODO: broken. Need to convert strings to int.
 	s.sortOut()
 
 	// Render the list of results to user in terminal

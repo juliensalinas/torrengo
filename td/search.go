@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -32,8 +33,8 @@ type Torrent struct {
 	DescURL  string
 	Name     string
 	Size     string
-	Seeders  string
-	Leechers string
+	Seeders  int
+	Leechers int
 }
 
 // A typical final url looks like:
@@ -105,15 +106,23 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 					DescURL: url,
 					Name:    name,
 				}
-				// Get leechers, seedersm and size from the 3 first <span> tags
+				// Get leechers, seeders and size from the 3 first <span> tags
 				s.Find("span").Each(func(i int, ss *goquery.Selection) {
 					switch i {
 					case 1:
-						leechers := ss.Text()
+						leechersStr := ss.Text()
+						leechers, err := strconv.Atoi(leechersStr)
+						if err != nil {
+							log.Fatal(err)
+						}
 						t.Leechers = leechers
 
 					case 2:
-						seeders := ss.Text()
+						seedersStr := ss.Text()
+						seeders, err := strconv.Atoi(seedersStr)
+						if err != nil {
+							log.Fatal(err)
+						}
 						t.Seeders = seeders
 
 					case 3:
