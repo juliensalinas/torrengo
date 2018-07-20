@@ -55,11 +55,20 @@ func dlFile(fileURL string) (string, error) {
 	defer out.Close()
 
 	// Download torrent
-	resp, err := http.Get(fileURL)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fileURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not create request: %v", err)
+	}
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("could not download the torrent file: %v", err)
 	}
-	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		resp.Body.Close()
+		return "", fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
+	}
 
 	// Save torrent to disk
 	_, err = io.Copy(out, resp.Body)

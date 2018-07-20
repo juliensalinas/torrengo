@@ -53,7 +53,7 @@ func DlFile(fileURL string) (string, error) {
 	}
 	defer out.Close()
 
-	// Initialize the Cloudflare scraping lib
+	// Initialize the Cloudflare scraping lib (also automatically adds a user-agent)
 	cfScraper, err := cfScraper.NewTransport(http.DefaultTransport)
 	if err != nil {
 		return "", fmt.Errorf("could not initialize Cloudflare scraper: %v", err)

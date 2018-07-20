@@ -1,7 +1,10 @@
 // Package td searches torrentdownloads.me and returns a clean list of torrents found
-// on the first page.
+// on the first page based on a user search.
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
+// Package td also downloads the torrent file located on a webpage provided by user (very tricky
+// because torrentdownloads has a Cloudflare protection so  does not work 100% of the time)
+// or retrieves the magnet link.
 // Parsing is achieved thanks to the GoQuery library.
 //
 // Input passed to the Search() function is a search string.

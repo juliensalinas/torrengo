@@ -237,7 +237,7 @@ func main() {
 			// Ask user to choose between file download and magnet download
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +
-				"\n1) Magnet link\n2) Torrent file")
+				"\n1) Magnet link\n2) Torrent file (careful: not working 100% of the time)")
 			var choice int
 			for {
 				choiceStr, err := reader.ReadString('\n')
