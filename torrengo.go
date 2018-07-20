@@ -52,7 +52,7 @@ func (s *search) cleanIn() error {
 
 	// If user input is empty raise an error
 	if s.in == "" {
-		return fmt.Errorf("user input should not be empty")
+		return fmt.Errorf("User input should not be empty")
 	}
 
 	return nil
@@ -133,38 +133,25 @@ func getAndShowTorrent() {
 	fmt.Printf("Here is your torrent file: %s\n", ft.filePath)
 }
 
-func openTorInClient(filePath string) {
+func openMagOrTorInClient(resource string) {
 	// Open torrent in client
-	log.Debug("open %s with torrent client.", filePath)
+	log.Debug("open %s with torrent client.", resource)
 	log.WithFields(log.Fields{
-		"filePath": filePath,
+		"resource": resource,
 		"client":   "Deluge",
-	}).Debug("Opening file with torrent client")
-	fmt.Println("Opening torrent in client...")
-	cmd := exec.Command("deluge", filePath)
+	}).Debug("opening magnet link or torrent file with torrent client")
+	fmt.Println("opening torrent in client...")
+	cmd := exec.Command("deluge", resource)
 	// Use Start() instead of Run() because do not want to wait for the torrent
 	// client process to complete (detached process).
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
-	}
-}
-
-func openMagInClient(magnet string) {
-	log.Debug("open %s with torrent client.", magnet)
-	log.WithFields(log.Fields{
-		"magnet": magnet,
-		"client": "Deluge",
-	}).Debug("Opening file with torrent client")
-	fmt.Println("Opening torrent in client...")
-	cmd := exec.Command("deluge", magnet)
-	err := cmd.Start()
-	if err != nil {
-		log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
+		log.Fatalf("could not open your torrent in client, you need to do it manually: %s\n", err)
 	}
 }
 
 // TODO: improve interaction with user
+// TODO: see when to log and when to fmt
 func main() {
 	// Get command line flags and arguments
 	websitePtr := flag.String("w", "all", "website you want to search: arc | td | all")
@@ -221,7 +208,64 @@ func main() {
 			s.out = append(s.out, t)
 		}
 	case "all":
-		fmt.Println("Lookup all")
+		arcTorListCh := make(chan []torrent)
+		arcSearchErrCh := make(chan error)
+		tdTorListCh := make(chan []torrent)
+		tdSearchErrCh := make(chan error)
+
+		var arcSearchErr, tdSearchErr error
+
+		go func() {
+			arcTorrents, err := arc.Lookup(s.in)
+			if err != nil {
+				arcSearchErrCh <- err
+			}
+			var torList []torrent
+			for _, arcTorrent := range arcTorrents {
+				t := torrent{
+					descURL: arcTorrent.DescURL,
+					name:    arcTorrent.Name,
+					source:  "arc",
+				}
+				torList = append(torList, t)
+			}
+			arcTorListCh <- torList
+		}()
+		select {
+		case arcSearchErr = <-arcSearchErrCh:
+			log.Errorf("the arc search goroutine quit with an error: %v", err)
+		case arcTorList := <-arcTorListCh:
+			s.out = append(s.out, arcTorList...)
+		}
+		go func() {
+			tdTorrents, err := td.Lookup(s.in)
+			if err != nil {
+				tdSearchErrCh <- err
+			}
+			var torList []torrent
+			for _, tdTorrent := range tdTorrents {
+				t := torrent{
+					descURL:  tdTorrent.DescURL,
+					name:     tdTorrent.Name,
+					size:     tdTorrent.Size,
+					leechers: tdTorrent.Leechers,
+					seeders:  tdTorrent.Seeders,
+					source:   "td",
+				}
+				torList = append(torList, t)
+			}
+			tdTorListCh <- torList
+		}()
+		select {
+		case tdSearchErr = <-tdSearchErrCh:
+			log.Errorf("the td search goroutine quit with an error: %v", err)
+		case tdTorList := <-tdTorListCh:
+			s.out = append(s.out, tdTorList...)
+		}
+
+		if arcSearchErr != nil && tdSearchErr != nil {
+			log.Fatal("all searches return an error...")
+		}
 	}
 
 	// Sort results (on seeders)
@@ -254,7 +298,7 @@ func main() {
 	switch s.sourceToLookup {
 	case "arc":
 		getAndShowTorrent()
-		openTorInClient(ft.filePath)
+		openMagOrTorInClient(ft.filePath)
 	case "td":
 		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
 		if err != nil {
@@ -287,14 +331,14 @@ func main() {
 			switch choice {
 			case 1:
 				getAndShowMagnet()
-				openMagInClient(ft.magnet)
+				openMagOrTorInClient(ft.magnet)
 			case 2:
 				getAndShowTorrent()
-				openTorInClient(ft.filePath)
+				openMagOrTorInClient(ft.filePath)
 			}
 		}
 	case "all":
-		fmt.Println("\nDownload all")
+		fmt.Println("Download all")
 	}
 
 }
