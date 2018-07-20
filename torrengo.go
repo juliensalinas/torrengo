@@ -133,6 +133,37 @@ func getAndShowTorrent() {
 	fmt.Printf("Here is your torrent file: %s\n", ft.filePath)
 }
 
+func openTorInClient(filePath string) {
+	// Open torrent in client
+	log.Debug("open %s with torrent client.", filePath)
+	log.WithFields(log.Fields{
+		"filePath": filePath,
+		"client":   "Deluge",
+	}).Debug("Opening file with torrent client")
+	fmt.Println("Opening torrent in client...")
+	cmd := exec.Command("deluge", filePath)
+	// Use Start() instead of Run() because do not want to wait for the torrent
+	// client process to complete (detached process).
+	err := cmd.Start()
+	if err != nil {
+		log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
+	}
+}
+
+func openMagInClient(magnet string) {
+	log.Debug("open %s with torrent client.", magnet)
+	log.WithFields(log.Fields{
+		"magnet": magnet,
+		"client": "Deluge",
+	}).Debug("Opening file with torrent client")
+	fmt.Println("Opening torrent in client...")
+	cmd := exec.Command("deluge", magnet)
+	err := cmd.Start()
+	if err != nil {
+		log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
+	}
+}
+
 // TODO: improve interaction with user
 func main() {
 	// Get command line flags and arguments
@@ -223,6 +254,7 @@ func main() {
 	switch s.sourceToLookup {
 	case "arc":
 		getAndShowTorrent()
+		openTorInClient(ft.filePath)
 	case "td":
 		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
 		if err != nil {
@@ -255,35 +287,14 @@ func main() {
 			switch choice {
 			case 1:
 				getAndShowMagnet()
+				openMagInClient(ft.magnet)
 			case 2:
 				getAndShowTorrent()
-
+				openTorInClient(ft.filePath)
 			}
 		}
 	case "all":
 		fmt.Println("\nDownload all")
-	}
-
-	// Open torrent in client
-	switch s.sourceToLookup {
-	case "arc":
-		log.Debug("open %s with torrent client.", ft.filePath)
-		log.WithFields(log.Fields{
-			"filePath": ft.filePath,
-			"client":   "Deluge",
-		}).Debug("Opening file with torrent client")
-		fmt.Println("Opening torrent in client...")
-		cmd := exec.Command("deluge", ft.filePath)
-		// Use Start() instead of Run() because do not want to wait for the torrent
-		// client process to complete (detached process).
-		err := cmd.Start()
-		if err != nil {
-			log.Fatalf("Could not open your torrent in client, you need to do it manually: %s\n", err)
-		}
-	case "td":
-	case "all":
-		fmt.Println("Open all")
-
 	}
 
 }
