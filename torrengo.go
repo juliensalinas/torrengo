@@ -125,7 +125,7 @@ func getAndShowTorrent() {
 	case "arc":
 		ft.filePath, err = arc.FindAndDlFile(ft.descURL)
 	case "td":
-		ft.filePath, err = td.DlFile(ft.descURL)
+		ft.filePath, err = td.DlFile(ft.fileURL)
 	}
 	if err != nil {
 		log.Fatal(err)

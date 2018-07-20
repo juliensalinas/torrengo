@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,7 +38,9 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 	return fileURL, magnet, nil
 }
 
-// DlFile downloads the torrent file
+// DlFile downloads the torrent file.
+// The file is protected by Cloudflare so need to use a dedicated lib to bypass
+// it. Does not work 100% of the time...
 func DlFile(fileURL string) (string, error) {
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
@@ -50,8 +53,16 @@ func DlFile(fileURL string) (string, error) {
 	}
 	defer out.Close()
 
+	// Initialize the Cloudflare scraping lib
+	cfScraper, err := cfScraper.NewTransport(http.DefaultTransport)
+	if err != nil {
+		return "", fmt.Errorf("could not initialize Cloudflare scraper: %v", err)
+	}
+	client := http.Client{Transport: cfScraper}
+
 	// Download torrent
-	resp, err := http.Get(fileURL)
+	fmt.Println(fileURL)
+	resp, err := client.Get(fileURL)
 	if err != nil {
 		return "", fmt.Errorf("could not download the torrent file: %v", err)
 	}
@@ -102,16 +113,6 @@ func ExtractTorAndMag(descURL string) (fileURL string, magnet string, err error)
 			"magnetLink": magnet,
 		}).Debug("Successfully fetched a torrent file and a magnet link on the description page")
 	}
-
-	// filePath, err := dlFile(fileURL)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error while downloading torrent file: %v", err)
-	// }
-	// log.WithFields(log.Fields{
-	// 	"filePath": filePath,
-	// }).Debug("Successfully dowloaded torrent file.")
-
-	// return filePath, nil
 
 	return fileURL, magnet, nil
 }
