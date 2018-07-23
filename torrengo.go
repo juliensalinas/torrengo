@@ -40,9 +40,9 @@ var ft torrent
 
 // search represents the user search
 type search struct {
-	in             string
-	out            []torrent
-	sourceToLookup string
+	in              string
+	out             []torrent
+	sourcesToLookup []string
 }
 
 // cleanIn cleans the user search input
@@ -108,23 +108,6 @@ func render(torrents []torrent) {
 	table.Render()
 }
 
-func init() {
-	// TODO: log to file
-	// TODO: mention log path in every user error message
-	// TODO: log as JSON for production
-
-	// Log as JSON instead of the default ASCII formatter
-	// log.SetFormatter(&log.JSONFormatter{})
-	log.SetFormatter(&log.TextFormatter{})
-
-	// Only log the warning severity or above
-	log.SetLevel(log.DebugLevel)
-
-	// Log filename and line number.
-	// Should be removed from production because adds a performance cost.
-	log.AddHook(filename.NewHook())
-}
-
 // getAndShowMagnet retrieves and displays magnet to user
 func getAndShowMagnet() {
 	fmt.Printf("Here is your magnet link: %s\n", ft.magnet)
@@ -171,10 +154,45 @@ func openMagOrTorInClient(resource string) {
 	}
 }
 
+// rmDuplicates removes duplicates from slice
+func rmDuplicates(elements []string) []string {
+	encountered := map[string]bool{}
+
+	// Create a map of all unique elements.
+	for v := range elements {
+		encountered[elements[v]] = true
+	}
+
+	// Place all keys from the map into a slice.
+	result := []string{}
+	for key := range encountered {
+		result = append(result, key)
+	}
+	return result
+}
+
+func init() {
+	// TODO: log to file
+	// TODO: mention log path in every user error message
+	// TODO: log as JSON for production
+
+	// Log as JSON instead of the default ASCII formatter
+	// log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
+
+	// Only log the warning severity or above
+	log.SetLevel(log.DebugLevel)
+
+	// Log filename and line number.
+	// Should be removed from production because adds a performance cost.
+	log.AddHook(filename.NewHook())
+}
+
 // TODO: improve interaction with user
 func main() {
 	// Get command line flags and arguments
-	websitePtr := flag.String("w", "all", "website you want to search: arc | td | all")
+	sourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
+		"you want to search (e.g. arc,td,tbp). Choices are: arc, td, all.")
 	flag.Parse()
 	args := flag.Args()
 
@@ -183,11 +201,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize the user search with the user input and sourceToLookup, and out is zeroed.
+	// Initialize the user search with the user input and sourcesToLookup, and out is zeroed.
+	// Remove possible duplicates from user input and, in case user chooses "all" as a source,
+	// convert it to the proper source names.
 	// Concatenate all input arguments into one single string in case user does not use quotes.
+	sourcesSlc := strings.Split(*sourcesPtr, ",")
+	cleanedSourcesSlc := rmDuplicates(sourcesSlc)
+	for _, e := range cleanedSourcesSlc {
+		if e == "all" {
+			cleanedSourcesSlc = []string{"arc", "td"}
+			break
+		}
+	}
 	s := search{
-		in:             strings.Join(args, " "),
-		sourceToLookup: *websitePtr,
+		in:              strings.Join(args, " "),
+		sourcesToLookup: cleanedSourcesSlc,
 	}
 
 	// Clean user input
@@ -200,139 +228,105 @@ func main() {
 		}).Fatal("Could not clean user input")
 	}
 
-	// Search torrents
-	switch s.sourceToLookup {
-	// User wants to search archive.org
-	case "arc":
-		arcTorrents, err := arc.Lookup(s.in)
-		if err != nil {
-			fmt.Println("An error occured during search (see logs for more details).")
-			log.WithFields(log.Fields{
-				"input":          s.in,
-				"sourceToLookup": s.sourceToLookup,
-				"error":          err,
-			}).Fatal("Could not perform torrent search")
-		}
-		for _, arcTorrent := range arcTorrents {
-			t := torrent{
-				descURL: arcTorrent.DescURL,
-				name:    arcTorrent.Name,
-				size:    "Unknown",
-				// Set leechers and seeders to -1 because do not have the info
-				leechers: -1,
-				seeders:  -1,
-				source:   "arc",
-			}
-			s.out = append(s.out, t)
-		}
-	// User wants to search torrentdownloads.com
-	case "td":
-		tdTorrents, err := td.Lookup(s.in)
-		if err != nil {
-			fmt.Println("An error occured during search (see logs for more details).")
-			log.WithFields(log.Fields{
-				"input":          s.in,
-				"sourceToLookup": s.sourceToLookup,
-				"error":          err,
-			}).Fatal("Could not perform torrent search")
-		}
-		for _, tdTorrent := range tdTorrents {
-			t := torrent{
-				descURL:  tdTorrent.DescURL,
-				name:     tdTorrent.Name,
-				size:     tdTorrent.Size,
-				leechers: tdTorrent.Leechers,
-				seeders:  tdTorrent.Seeders,
-				source:   "td",
-			}
-			s.out = append(s.out, t)
-		}
-	// User wants to search all sources concurrently
-	case "all":
-		// Channels for results
-		arcTorListCh := make(chan []torrent)
-		tdTorListCh := make(chan []torrent)
+	// Channels for results
+	arcTorListCh := make(chan []torrent)
+	tdTorListCh := make(chan []torrent)
 
-		// Channels for errors
-		arcSearchErrCh := make(chan error)
-		tdSearchErrCh := make(chan error)
+	// Channels for errors
+	arcSearchErrCh := make(chan error)
+	tdSearchErrCh := make(chan error)
 
-		// Concurrently search archive.org
-		go func() {
-			arcTorrents, err := arc.Lookup(s.in)
-			if err != nil {
-				arcSearchErrCh <- err
-			}
-			var torList []torrent
-			for _, arcTorrent := range arcTorrents {
-				t := torrent{
-					descURL:  arcTorrent.DescURL,
-					name:     arcTorrent.Name,
-					size:     "unknown",
-					leechers: -1,
-					seeders:  -1,
-					source:   "arc",
+	// Launch all torrent search goroutines
+	for _, source := range s.sourcesToLookup {
+		switch source {
+		// User wants to search archive.org
+		case "arc":
+			// Concurrently search archive.org
+			go func() {
+				arcTorrents, err := arc.Lookup(s.in)
+				if err != nil {
+					arcSearchErrCh <- err
 				}
-				torList = append(torList, t)
-			}
-			arcTorListCh <- torList
-		}()
-
-		// Concurrently search torrentdownloads,con
-		go func() {
-			tdTorrents, err := td.Lookup(s.in)
-			if err != nil {
-				tdSearchErrCh <- err
-			}
-			var torList []torrent
-			for _, tdTorrent := range tdTorrents {
-				t := torrent{
-					descURL:  tdTorrent.DescURL,
-					name:     tdTorrent.Name,
-					size:     tdTorrent.Size,
-					leechers: tdTorrent.Leechers,
-					seeders:  tdTorrent.Seeders,
-					source:   "td",
+				var torList []torrent
+				for _, arcTorrent := range arcTorrents {
+					t := torrent{
+						descURL:  arcTorrent.DescURL,
+						name:     arcTorrent.Name,
+						size:     "unknown",
+						leechers: -1,
+						seeders:  -1,
+						source:   "arc",
+					}
+					torList = append(torList, t)
 				}
-				torList = append(torList, t)
+				arcTorListCh <- torList
+			}()
+
+		// User wants to search torrentdownloads.me
+		case "td":
+
+			// Concurrently search torrentdownloads.me
+			go func() {
+				tdTorrents, err := td.Lookup(s.in)
+				if err != nil {
+					tdSearchErrCh <- err
+				}
+				var torList []torrent
+				for _, tdTorrent := range tdTorrents {
+					t := torrent{
+						descURL:  tdTorrent.DescURL,
+						name:     tdTorrent.Name,
+						size:     tdTorrent.Size,
+						leechers: tdTorrent.Leechers,
+						seeders:  tdTorrent.Seeders,
+						source:   "td",
+					}
+					torList = append(torList, t)
+				}
+				tdTorListCh <- torList
+			}()
+		}
+	}
+
+	// Initialize search errors
+	var tdSearchErr, arcSearchErr error
+
+	// Gather all goroutines results
+	for _, source := range s.sourcesToLookup {
+		switch source {
+		case "arc":
+			// Get results or error from archive.org
+			select {
+			case arcSearchErr = <-arcSearchErrCh:
+				fmt.Println("An error occured during search on Archive.org.")
+				log.WithFields(log.Fields{
+					"input": s.in,
+					"error": err,
+				}).Error("The arc search goroutine broke")
+			case arcTorList := <-arcTorListCh:
+				s.out = append(s.out, arcTorList...)
 			}
-			tdTorListCh <- torList
-		}()
-
-		// Get results or error from archive.org
-		var arcSearchErr error
-		select {
-		case arcSearchErr = <-arcSearchErrCh:
-			fmt.Println("An error occured during search on Archive.org.")
-			log.WithFields(log.Fields{
-				"input": s.in,
-				"error": err,
-			}).Error("The arc search goroutine broke")
-		case arcTorList := <-arcTorListCh:
-			s.out = append(s.out, arcTorList...)
+		case "td":
+			// Get results or error from torrentdownloads.com
+			select {
+			case tdSearchErr = <-tdSearchErrCh:
+				fmt.Println("An error occured during search on TorrentDownloads.com.")
+				log.WithFields(log.Fields{
+					"input": s.in,
+					"error": err,
+				}).Error("The td search goroutine broke")
+			case tdTorList := <-tdTorListCh:
+				s.out = append(s.out, tdTorList...)
+			}
 		}
-
-		// Get results or error from torrentdownloads.com
-		var tdSearchErr error
-		select {
-		case tdSearchErr = <-tdSearchErrCh:
-			fmt.Println("An error occured during search on TorrentDownloads.com.")
-			log.WithFields(log.Fields{
-				"input": s.in,
-				"error": err,
-			}).Error("The td search goroutine broke")
-		case tdTorList := <-tdTorListCh:
-			s.out = append(s.out, tdTorList...)
-		}
-
-		// Stop the program only if all goroutines returned an error
-		if arcSearchErr != nil && tdSearchErr != nil {
-			fmt.Println("All searches returned an error.")
-			log.WithFields(log.Fields{
-				"input": s.in,
-				"error": err,
-			}).Fatal("All searches broke")
-		}
+	}
+	// Stop the program only if all goroutines returned an error
+	if arcSearchErr != nil && tdSearchErr != nil {
+		fmt.Println("All searches returned an error.")
+		log.WithFields(log.Fields{
+			"input": s.in,
+			"error": err,
+		}).Fatal("All searches broke")
 	}
 
 	// Sort results (on seeders)
@@ -372,9 +366,9 @@ func main() {
 		if err != nil {
 			fmt.Println("An error occured while retrieving magnet and torrent file.")
 			log.WithFields(log.Fields{
-				"descURL":        ft.descURL,
-				"sourceToLookup": s.sourceToLookup,
-				"error":          err,
+				"descURL":         ft.descURL,
+				"sourcesToLookup": s.sourcesToLookup,
+				"error":           err,
 			}).Fatal("Could not retrieve magnet and torrent file")
 		}
 		switch {
