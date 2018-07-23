@@ -15,6 +15,7 @@ import (
 
 	"github.com/juliensalinas/torrengo/arc"
 	"github.com/juliensalinas/torrengo/td"
+	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -36,6 +37,14 @@ type torrent struct {
 	filePath string
 }
 
+// sources maps source short names to real names
+var sources = map[string]string{
+	"arc": "Archive",
+	"td":  "Torrent Downloads",
+	"tpb": "The Pirate Bay",
+}
+
+// ft is the final torrent the user wants to download
 var ft torrent
 
 // search represents the user search
@@ -86,7 +95,7 @@ func render(torrents []torrent) {
 			seedersStr,
 			leechersStr,
 			t.uplDate,
-			t.source,
+			sources[t.source],
 		}
 		renderedTorrents = append(renderedTorrents, renderedTorrent)
 	}
@@ -189,10 +198,13 @@ func init() {
 }
 
 // TODO: improve interaction with user
+// TODO: if no result found, not display an empty table
+// TODO: tpb is changing very frequently so implement a proxy lookup
 func main() {
+
 	// Get command line flags and arguments
-	sourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
-		"you want to search (e.g. arc,td,tbp). Choices: arc | td | all. "+
+	usrSourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
+		"you want to search (e.g. arc,td,tbp). Choices: arc | td | tpb | all. "+
 		"\"all\" searches all websites.")
 	flag.Parse()
 	args := flag.Args()
@@ -208,24 +220,24 @@ func main() {
 	// In case user chooses "all" as a source, convert it to the proper source names.
 	// Stop if a user source is unknown.
 	// Concatenate all input arguments into one single string in case user does not use quotes.
-	sourcesSlc := strings.Split(*sourcesPtr, ",")
-	cleanedSourcesSlc := rmDuplicates(sourcesSlc)
-	for _, source := range cleanedSourcesSlc {
-		if source == "all" {
-			cleanedSourcesSlc = []string{"arc", "td"}
+	usrSourcesSlc := strings.Split(*usrSourcesPtr, ",")
+	cleanedUsrSourcesSlc := rmDuplicates(usrSourcesSlc)
+	for _, usrSource := range cleanedUsrSourcesSlc {
+		if usrSource == "all" {
+			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb"}
 			break
 		}
-		if source != "arc" && source != "td" {
-			fmt.Printf("This website is not correct: %v\n", source)
+		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" {
+			fmt.Printf("This website is not correct: %v\n", usrSource)
 			log.WithFields(log.Fields{
-				"sourcesList": cleanedSourcesSlc,
-				"wrongSource": source,
+				"sourcesList": cleanedUsrSourcesSlc,
+				"wrongSource": usrSource,
 			}).Fatal("Unknown source in user sources list")
 		}
 	}
 	s := search{
 		in:              strings.Join(args, " "),
-		sourcesToLookup: cleanedSourcesSlc,
+		sourcesToLookup: cleanedUsrSourcesSlc,
 	}
 
 	// Clean user input
@@ -241,17 +253,18 @@ func main() {
 	// Channels for results
 	arcTorListCh := make(chan []torrent)
 	tdTorListCh := make(chan []torrent)
+	tpbTorListCh := make(chan []torrent)
 
 	// Channels for errors
 	arcSearchErrCh := make(chan error)
 	tdSearchErrCh := make(chan error)
+	tpbSearchErrCh := make(chan error)
 
 	// Launch all torrent search goroutines
 	for _, source := range s.sourcesToLookup {
 		switch source {
 		// User wants to search archive.org
 		case "arc":
-			// Concurrently search archive.org
 			go func() {
 				arcTorrents, err := arc.Lookup(s.in)
 				if err != nil {
@@ -262,7 +275,7 @@ func main() {
 					t := torrent{
 						descURL:  arcTorrent.DescURL,
 						name:     arcTorrent.Name,
-						size:     "unknown",
+						size:     "Unknown",
 						leechers: -1,
 						seeders:  -1,
 						source:   "arc",
@@ -274,8 +287,6 @@ func main() {
 
 		// User wants to search torrentdownloads.me
 		case "td":
-
-			// Concurrently search torrentdownloads.me
 			go func() {
 				tdTorrents, err := td.Lookup(s.in)
 				if err != nil {
@@ -295,11 +306,34 @@ func main() {
 				}
 				tdTorListCh <- torList
 			}()
+
+		// User wants to search pirateproxy.mx
+		case "tpb":
+			go func() {
+				tpbTorrents, err := tpb.Lookup(s.in)
+				if err != nil {
+					tpbSearchErrCh <- err
+				}
+				var torList []torrent
+				for _, tpbTorrent := range tpbTorrents {
+					t := torrent{
+						magnet:   tpbTorrent.Magnet,
+						name:     tpbTorrent.Name,
+						size:     tpbTorrent.Size,
+						uplDate:  tpbTorrent.UplDate,
+						leechers: tpbTorrent.Leechers,
+						seeders:  tpbTorrent.Seeders,
+						source:   "tpb",
+					}
+					torList = append(torList, t)
+				}
+				tpbTorListCh <- torList
+			}()
 		}
 	}
 
 	// Initialize search errors
-	var tdSearchErr, arcSearchErr error
+	var tdSearchErr, arcSearchErr, tpbSearchErr error
 
 	// Gather all goroutines results
 	for _, source := range s.sourcesToLookup {
@@ -328,10 +362,22 @@ func main() {
 			case tdTorList := <-tdTorListCh:
 				s.out = append(s.out, tdTorList...)
 			}
+		case "tpb":
+			// Get results or error from pirateproxy.mx
+			select {
+			case tpbSearchErr = <-tpbSearchErrCh:
+				fmt.Println("An error occured during search on pirateproxy.mx")
+				log.WithFields(log.Fields{
+					"input": s.in,
+					"error": err,
+				}).Error("The tpb search goroutine broke")
+			case tpbTorList := <-tpbTorListCh:
+				s.out = append(s.out, tpbTorList...)
+			}
 		}
 	}
 	// Stop the program only if all goroutines returned an error
-	if arcSearchErr != nil && tdSearchErr != nil {
+	if arcSearchErr != nil && tdSearchErr != nil && tpbSearchErr != nil {
 		fmt.Println("All searches returned an error.")
 		log.WithFields(log.Fields{
 			"input": s.in,
@@ -424,6 +470,7 @@ func main() {
 				openMagOrTorInClient(ft.filePath)
 			}
 		}
+	case "tpb":
+		openMagOrTorInClient(ft.magnet)
 	}
-
 }

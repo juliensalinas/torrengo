@@ -1,23 +1,29 @@
-// Package td searches torrentdownloads.me and returns a clean list of torrents found
-// on the first page based on a user search.
+// Package td searches and downloads torrents from torrentdownloads.me
+//
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
-// Package td also downloads the torrent file located on a webpage provided by user (very tricky
-// because torrentdownloads has a Cloudflare protection so  does not work 100% of the time)
-// or retrieves the magnet link.
 // Parsing is achieved thanks to the GoQuery library.
+// Comments common to all scraping libs are already done in the arc package which is very
+// similar to this package. Only additional comments specific to this lib are present here.
 //
-// Input passed to the Search() function is a search string.
-//
-// Output is a slice of maps made up of 2 keys:
+// Torrent search is achieved by Lookup().
+// Input is a search string.
+// Output is a slice of maps made up of the following keys:
 // - DescUrl: the torrent description dedicated url
 // - Name: the torrent name
 // - Size: the size of the file to be downloaded
 // - Leechers: the number of leechers (set to -1 if cannot be converted to integer)
 // - Seechers: the number of seechers (set to -1 if cannot be converted to integer)
 //
-// Comments common to all scraping libs are already done in the arc package which is very
-// similar to this package. Only additional comments specific to this lib are present here.
+// Torrent url and magnet file extraction are achieved by ExtractTorAndMag().
+// Input is the url of the torrent page.
+// Output are the torrent url and the magnet link.
+//
+// Download or torrent file is achieved by DlFile() (very tricky
+// because torrentdownloads has a Cloudflare protection so  does not work 100% of the time).
+// Input is the torrent file url.
+// Output is the local path where the torrent file was downloaded.
+
 package td
 
 import (
@@ -85,7 +91,6 @@ func fetch(url string) (*http.Response, error) {
 }
 
 func parseSearchPage(r io.Reader) ([]Torrent, error) {
-
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)

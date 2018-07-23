@@ -1,15 +1,18 @@
-// Package arc searches archive.org and returns a clean list of torrents found
-// on the first page based on a user search.
+// Package arc searches and downloads archive.org
+//
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
-// Package arc also downloads the torrent file located on a webpage provided by user .
 // Parsing is achieved thanks to the GoQuery library.
 //
-// Input passed to the Search() function is a search string.
-//
-// Output is a slice of maps made up of 2 keys:
+// Torrent search is achieved by Lookup().
+// Input is a search string.
+// Output is a slice of maps made up of the following keys:
 // - DescUrl: the torrent description dedicated url
 // - Name: the torrent name
+//
+// Torrent url extraction and torrent file download are achieved by FindAndDlFile().
+// Input is the url of the torrent page.
+// Output is the local path where the torrent file was downloaded.
 package arc
 
 import (
