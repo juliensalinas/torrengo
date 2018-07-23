@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	log "github.com/sirupsen/logrus"
 )
 
 const baseURL string = "https://archive.org"
@@ -132,9 +131,6 @@ func Lookup(in string) ([]Torrent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
-	log.WithFields(log.Fields{
-		"url": url,
-	}).Debug("Successfully built url.")
 
 	// Fetch url
 	resp, err := fetch(url)
@@ -142,7 +138,6 @@ func Lookup(in string) ([]Torrent, error) {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
-	log.Debug("Successfully fetched html content.")
 
 	// Parse html response
 	torrents, err := parseSearchPage(resp.Body)

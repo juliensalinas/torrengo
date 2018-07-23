@@ -359,10 +359,11 @@ func main() {
 		break
 	}
 
+	// Final torrent we're working on as of now
 	ft = s.out[index]
 
-	// Download torrent
-	switch s.sourceToLookup {
+	// Download torrent and optionnaly open in torrent client
+	switch ft.source {
 	case "arc":
 		getAndShowTorrent()
 		openMagOrTorInClient(ft.filePath)
@@ -419,8 +420,6 @@ func main() {
 				openMagOrTorInClient(ft.filePath)
 			}
 		}
-	case "all":
-		fmt.Println("Download all")
 	}
 
 }
