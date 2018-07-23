@@ -6,9 +6,10 @@
 // Parsing is achieved thanks to the GoQuery library.
 //
 // Input passed to the Search() function is a search string.
+//
 // Output is a slice of maps made up of 2 keys:
-// descUrl: the torrent description dedicated url
-// name: the torrent name
+// - DescUrl: the torrent description dedicated url
+// - Name: the torrent name
 package arc
 
 import (

@@ -8,9 +8,13 @@
 // Parsing is achieved thanks to the GoQuery library.
 //
 // Input passed to the Search() function is a search string.
+//
 // Output is a slice of maps made up of 2 keys:
-// descUrl: the torrent description dedicated url
-// name: the torrent name
+// - DescUrl: the torrent description dedicated url
+// - Name: the torrent name
+// - Size: the size of the file to be downloaded
+// - Leechers: the number of leechers (set to -1 if cannot be converted to integer)
+// - Seechers: the number of seechers (set to -1 if cannot be converted to integer)
 //
 // Comments common to all scraping libs are already done in the arc package which is very
 // similar to this package. Only additional comments specific to this lib are present here.
@@ -25,7 +29,6 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	log "github.com/sirupsen/logrus"
 )
 
 const baseURL string = "https://www.torrentdownloads.me"
@@ -33,9 +36,10 @@ const userAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/5
 
 // Torrent contains meta information about the torrent
 type Torrent struct {
-	DescURL  string
-	Name     string
-	Size     string
+	DescURL string
+	Name    string
+	Size    string
+	// Seeders and Leechers are converted to -1 if cannot be converted to integers
 	Seeders  int
 	Leechers int
 }
@@ -109,14 +113,17 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 					DescURL: url,
 					Name:    name,
 				}
-				// Get leechers, seeders and size from the 3 first <span> tags
+				// Get leechers, seeders and size from the 3 first <span> tags.
+				// Try to convert leechers and seeders to integers but if does not work
+				// we do not stop for all that: we just set the leechers and seeders to
+				// -1 so the calling library can differentiate it.
 				s.Find("span").Each(func(i int, ss *goquery.Selection) {
 					switch i {
 					case 1:
 						leechersStr := ss.Text()
 						leechers, err := strconv.Atoi(leechersStr)
 						if err != nil {
-							log.Fatal(err)
+							leechers = -1
 						}
 						t.Leechers = leechers
 
@@ -124,7 +131,7 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 						seedersStr := ss.Text()
 						seeders, err := strconv.Atoi(seedersStr)
 						if err != nil {
-							log.Fatal(err)
+							seeders = -1
 						}
 						t.Seeders = seeders
 
@@ -138,7 +145,6 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 		}
 	})
 
-	fmt.Println(torrents)
 	return torrents, nil
 }
 
@@ -150,16 +156,12 @@ func Lookup(in string) ([]Torrent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
-	log.WithFields(log.Fields{
-		"url": url,
-	}).Debug("Successfully built url.")
 
 	resp, err := fetch(url)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
-	log.Debug("Successfully fetched html content.")
 
 	torrents, err := parseSearchPage(resp.Body)
 	if err != nil {

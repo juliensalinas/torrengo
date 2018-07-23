@@ -70,8 +70,15 @@ func render(torrents []torrent) {
 	// Turn type []torrent to type [][]string because this is what tablewriter expects
 	var renderedTorrents [][]string
 	for i, t := range torrents {
+		// Replace -1 by unknown because more user-friendly
 		seedersStr := strconv.Itoa(t.seeders)
+		if seedersStr == "-1" {
+			seedersStr = "Unknown"
+		}
 		leechersStr := strconv.Itoa(t.leechers)
+		if leechersStr == "-1" {
+			leechersStr = "Unknown"
+		}
 		renderedTorrent := []string{
 			strconv.Itoa(i),
 			t.name,
@@ -102,8 +109,13 @@ func render(torrents []torrent) {
 }
 
 func init() {
+	// TODO: log to file
+	// TODO: mention log path in every user error message
+	// TODO: log as JSON for production
+
 	// Log as JSON instead of the default ASCII formatter
-	log.SetFormatter(&log.JSONFormatter{})
+	// log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
 
 	// Only log the warning severity or above
 	log.SetLevel(log.DebugLevel)
@@ -128,30 +140,38 @@ func getAndShowTorrent() {
 		ft.filePath, err = td.DlFile(ft.fileURL)
 	}
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Could not retrieve the torrent file (see logs for more details).")
+		log.WithFields(log.Fields{
+			"descURL": ft.descURL,
+			"error":   err,
+		}).Fatal("Could not retrieve the torrent file")
 	}
 	fmt.Printf("Here is your torrent file: %s\n", ft.filePath)
 }
 
 func openMagOrTorInClient(resource string) {
 	// Open torrent in client
-	log.Debug("open %s with torrent client.", resource)
+	log.Debug("Open %s with torrent client.", resource)
 	log.WithFields(log.Fields{
 		"resource": resource,
 		"client":   "Deluge",
-	}).Debug("opening magnet link or torrent file with torrent client")
+	}).Debug("Opening magnet link or torrent file with torrent client")
 	fmt.Println("opening torrent in client...")
 	cmd := exec.Command("deluge", resource)
 	// Use Start() instead of Run() because do not want to wait for the torrent
 	// client process to complete (detached process).
 	err := cmd.Start()
 	if err != nil {
-		log.Fatalf("could not open your torrent in client, you need to do it manually: %s\n", err)
+		fmt.Println("Could not open your torrent in client, you need to do it manually (see logs for more details).")
+		log.WithFields(log.Fields{
+			"resource": resource,
+			"client":   "Deluge",
+			"error":    err,
+		}).Fatal("Could not open torrent in client")
 	}
 }
 
 // TODO: improve interaction with user
-// TODO: see when to log and when to fmt
 func main() {
 	// Get command line flags and arguments
 	websitePtr := flag.String("w", "all", "website you want to search: arc | td | all")
@@ -173,28 +193,48 @@ func main() {
 	// Clean user input
 	err := s.cleanIn()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Could not process your input (see logs for more details).")
+		log.WithFields(log.Fields{
+			"input": s.in,
+			"error": err,
+		}).Fatal("Could not clean user input")
 	}
 
 	// Search torrents
 	switch s.sourceToLookup {
+	// User wants to search archive.org
 	case "arc":
 		arcTorrents, err := arc.Lookup(s.in)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("An error occured during search (see logs for more details).")
+			log.WithFields(log.Fields{
+				"input":          s.in,
+				"sourceToLookup": s.sourceToLookup,
+				"error":          err,
+			}).Fatal("Could not perform torrent search")
 		}
 		for _, arcTorrent := range arcTorrents {
 			t := torrent{
 				descURL: arcTorrent.DescURL,
 				name:    arcTorrent.Name,
-				source:  "arc",
+				size:    "Unknown",
+				// Set leechers and seeders to -1 because do not have the info
+				leechers: -1,
+				seeders:  -1,
+				source:   "arc",
 			}
 			s.out = append(s.out, t)
 		}
+	// User wants to search torrentdownloads.com
 	case "td":
 		tdTorrents, err := td.Lookup(s.in)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("An error occured during search (see logs for more details).")
+			log.WithFields(log.Fields{
+				"input":          s.in,
+				"sourceToLookup": s.sourceToLookup,
+				"error":          err,
+			}).Fatal("Could not perform torrent search")
 		}
 		for _, tdTorrent := range tdTorrents {
 			t := torrent{
@@ -207,14 +247,17 @@ func main() {
 			}
 			s.out = append(s.out, t)
 		}
+	// User wants to search all sources concurrently
 	case "all":
+		// Channels for results
 		arcTorListCh := make(chan []torrent)
-		arcSearchErrCh := make(chan error)
 		tdTorListCh := make(chan []torrent)
+
+		// Channels for errors
+		arcSearchErrCh := make(chan error)
 		tdSearchErrCh := make(chan error)
 
-		var arcSearchErr, tdSearchErr error
-
+		// Concurrently search archive.org
 		go func() {
 			arcTorrents, err := arc.Lookup(s.in)
 			if err != nil {
@@ -223,20 +266,19 @@ func main() {
 			var torList []torrent
 			for _, arcTorrent := range arcTorrents {
 				t := torrent{
-					descURL: arcTorrent.DescURL,
-					name:    arcTorrent.Name,
-					source:  "arc",
+					descURL:  arcTorrent.DescURL,
+					name:     arcTorrent.Name,
+					size:     "unknown",
+					leechers: -1,
+					seeders:  -1,
+					source:   "arc",
 				}
 				torList = append(torList, t)
 			}
 			arcTorListCh <- torList
 		}()
-		select {
-		case arcSearchErr = <-arcSearchErrCh:
-			log.Errorf("the arc search goroutine quit with an error: %v", err)
-		case arcTorList := <-arcTorListCh:
-			s.out = append(s.out, arcTorList...)
-		}
+
+		// Concurrently search torrentdownloads,con
 		go func() {
 			tdTorrents, err := td.Lookup(s.in)
 			if err != nil {
@@ -256,15 +298,40 @@ func main() {
 			}
 			tdTorListCh <- torList
 		}()
+
+		// Get results or error from archive.org
+		var arcSearchErr error
+		select {
+		case arcSearchErr = <-arcSearchErrCh:
+			fmt.Println("An error occured during search on Archive.org.")
+			log.WithFields(log.Fields{
+				"input": s.in,
+				"error": err,
+			}).Error("The arc search goroutine broke")
+		case arcTorList := <-arcTorListCh:
+			s.out = append(s.out, arcTorList...)
+		}
+
+		// Get results or error from torrentdownloads.com
+		var tdSearchErr error
 		select {
 		case tdSearchErr = <-tdSearchErrCh:
-			log.Errorf("the td search goroutine quit with an error: %v", err)
+			fmt.Println("An error occured during search on TorrentDownloads.com.")
+			log.WithFields(log.Fields{
+				"input": s.in,
+				"error": err,
+			}).Error("The td search goroutine broke")
 		case tdTorList := <-tdTorListCh:
 			s.out = append(s.out, tdTorList...)
 		}
 
+		// Stop the program only if all goroutines returned an error
 		if arcSearchErr != nil && tdSearchErr != nil {
-			log.Fatal("all searches return an error...")
+			fmt.Println("All searches returned an error.")
+			log.WithFields(log.Fields{
+				"input": s.in,
+				"error": err,
+			}).Fatal("All searches broke")
 		}
 	}
 
@@ -302,14 +369,29 @@ func main() {
 	case "td":
 		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println("An error occured while retrieving magnet and torrent file.")
+			log.WithFields(log.Fields{
+				"descURL":        ft.descURL,
+				"sourceToLookup": s.sourceToLookup,
+				"error":          err,
+			}).Fatal("Could not retrieve magnet and torrent file")
 		}
 		switch {
 		case ft.fileURL == "" && ft.magnet != "":
+			log.WithFields(log.Fields{
+				"torrentURL": ft.fileURL,
+			}).Debug("Could not find a torrent file but successfully fetched a magnet link on the description page")
 			getAndShowMagnet()
 		case ft.fileURL != "" && ft.magnet == "":
+			log.WithFields(log.Fields{
+				"magnetLink": ft.magnet,
+			}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
 			getAndShowTorrent()
 		default:
+			log.WithFields(log.Fields{
+				"torrentURL": ft.fileURL,
+				"magnetLink": ft.magnet,
+			}).Debug("Successfully fetched a torrent file and a magnet link on the description page")
 			// Ask user to choose between file download and magnet download
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +

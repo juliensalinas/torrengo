@@ -10,7 +10,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
-	log "github.com/sirupsen/logrus"
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
@@ -92,26 +91,10 @@ func ExtractTorAndMag(descURL string) (fileURL string, magnet string, err error)
 		return "", "", fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
-	log.Debug("Successfully fetched html content.")
 
 	fileURL, magnet, err = parseDescPage(resp.Body)
 	if err != nil {
 		return "", "", fmt.Errorf("error while parsing torrent description page: %v", err)
-	}
-	switch {
-	case fileURL == "" && magnet != "":
-		log.WithFields(log.Fields{
-			"torrentURL": fileURL,
-		}).Debug("Could not find a torrent file but successfully fetched a magnet link on the description page")
-	case fileURL != "" && magnet == "":
-		log.WithFields(log.Fields{
-			"magnetLink": magnet,
-		}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
-	default:
-		log.WithFields(log.Fields{
-			"torrentURL": fileURL,
-			"magnetLink": magnet,
-		}).Debug("Successfully fetched a torrent file and a magnet link on the description page")
 	}
 
 	return fileURL, magnet, nil
