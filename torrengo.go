@@ -192,25 +192,35 @@ func init() {
 func main() {
 	// Get command line flags and arguments
 	sourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
-		"you want to search (e.g. arc,td,tbp). Choices are: arc, td, all.")
+		"you want to search (e.g. arc,td,tbp). Choices: arc | td | all. "+
+		"\"all\" searches all websites.")
 	flag.Parse()
 	args := flag.Args()
 
 	// If no command line argument is supplied, then we stop here
 	if len(args) == 0 {
+		fmt.Println("Please enter proper arguments (-h for help).")
 		os.Exit(1)
 	}
 
 	// Initialize the user search with the user input and sourcesToLookup, and out is zeroed.
-	// Remove possible duplicates from user input and, in case user chooses "all" as a source,
-	// convert it to the proper source names.
+	// Remove possible duplicates from user input.
+	// In case user chooses "all" as a source, convert it to the proper source names.
+	// Stop if a user source is unknown.
 	// Concatenate all input arguments into one single string in case user does not use quotes.
 	sourcesSlc := strings.Split(*sourcesPtr, ",")
 	cleanedSourcesSlc := rmDuplicates(sourcesSlc)
-	for _, e := range cleanedSourcesSlc {
-		if e == "all" {
+	for _, source := range cleanedSourcesSlc {
+		if source == "all" {
 			cleanedSourcesSlc = []string{"arc", "td"}
 			break
+		}
+		if source != "arc" && source != "td" {
+			fmt.Printf("This website is not correct: %v\n", source)
+			log.WithFields(log.Fields{
+				"sourcesList": cleanedSourcesSlc,
+				"wrongSource": source,
+			}).Fatal("Unknown source in user sources list")
 		}
 	}
 	s := search{
