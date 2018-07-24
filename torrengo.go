@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/juliensalinas/torrengo/arc"
+	"github.com/juliensalinas/torrengo/otts"
 	"github.com/juliensalinas/torrengo/td"
 	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/olekukonko/tablewriter"
@@ -39,9 +40,10 @@ type torrent struct {
 
 // sources maps source short names to real names
 var sources = map[string]string{
-	"arc": "Archive",
-	"td":  "Torrent Downloads",
-	"tpb": "The Pirate Bay",
+	"arc":  "Archive",
+	"td":   "Torrent Downloads",
+	"tpb":  "The Pirate Bay",
+	"otts": "1337x",
 }
 
 // ft is the final torrent the user wants to download
@@ -224,10 +226,10 @@ func main() {
 	cleanedUsrSourcesSlc := rmDuplicates(usrSourcesSlc)
 	for _, usrSource := range cleanedUsrSourcesSlc {
 		if usrSource == "all" {
-			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb"}
+			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb", "otts"}
 			break
 		}
-		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" {
+		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" && usrSource != "otts" {
 			fmt.Printf("This website is not correct: %v\n", usrSource)
 			log.WithFields(log.Fields{
 				"sourcesList": cleanedUsrSourcesSlc,
@@ -254,11 +256,13 @@ func main() {
 	arcTorListCh := make(chan []torrent)
 	tdTorListCh := make(chan []torrent)
 	tpbTorListCh := make(chan []torrent)
+	ottsTorListCh := make(chan []torrent)
 
 	// Channels for errors
 	arcSearchErrCh := make(chan error)
 	tdSearchErrCh := make(chan error)
 	tpbSearchErrCh := make(chan error)
+	ottsSearchErrCh := make(chan error)
 
 	// Launch all torrent search goroutines
 	for _, source := range s.sourcesToLookup {
@@ -329,11 +333,33 @@ func main() {
 				}
 				tpbTorListCh <- torList
 			}()
+		// User wants to search 1337x.to
+		case "otts":
+			go func() {
+				ottsTorrents, err := otts.Lookup(s.in)
+				if err != nil {
+					ottsSearchErrCh <- err
+				}
+				var torList []torrent
+				for _, ottsTorrent := range ottsTorrents {
+					t := torrent{
+						descURL:  ottsTorrent.DescURL,
+						name:     ottsTorrent.Name,
+						size:     ottsTorrent.Size,
+						uplDate:  ottsTorrent.UplDate,
+						leechers: ottsTorrent.Leechers,
+						seeders:  ottsTorrent.Seeders,
+						source:   "otts",
+					}
+					torList = append(torList, t)
+				}
+				ottsTorListCh <- torList
+			}()
 		}
 	}
 
 	// Initialize search errors
-	var tdSearchErr, arcSearchErr, tpbSearchErr error
+	var tdSearchErr, arcSearchErr, tpbSearchErr, ottsSearchErr error
 
 	// Gather all goroutines results
 	for _, source := range s.sourcesToLookup {
@@ -374,10 +400,22 @@ func main() {
 			case tpbTorList := <-tpbTorListCh:
 				s.out = append(s.out, tpbTorList...)
 			}
+		case "otts":
+			// Get results or error from 1337x.to
+			select {
+			case ottsSearchErr = <-ottsSearchErrCh:
+				fmt.Println("An error occured during search on 1337x.to")
+				log.WithFields(log.Fields{
+					"input": s.in,
+					"error": err,
+				}).Error("The otts search goroutine broke")
+			case ottsTorList := <-ottsTorListCh:
+				s.out = append(s.out, ottsTorList...)
+			}
 		}
 	}
 	// Stop the program only if all goroutines returned an error
-	if arcSearchErr != nil && tdSearchErr != nil && tpbSearchErr != nil {
+	if arcSearchErr != nil && tdSearchErr != nil && tpbSearchErr != nil && ottsSearchErr != nil {
 		fmt.Println("All searches returned an error.")
 		log.WithFields(log.Fields{
 			"input": s.in,
@@ -472,5 +510,7 @@ func main() {
 		}
 	case "tpb":
 		openMagOrTorInClient(ft.magnet)
+	case "otts":
+
 	}
 }

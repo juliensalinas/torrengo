@@ -1,4 +1,4 @@
-// Package td searches and downloads torrents from torrentdownloads.me
+// Package otts searches and downloads torrents from 1337x.to
 //
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
@@ -9,22 +9,18 @@
 // Torrent search is achieved by Lookup().
 // Input is a search string.
 // Output is a slice of maps made up of the following keys:
-// - DescUrl: the torrent description dedicated url
+// - Magnet: the torrent magnet
 // - Name: the torrent name
 // - Size: the size of the file to be downloaded
+// - UplDate: the date of upload
 // - Leechers: the number of leechers (set to -1 if cannot be converted to integer)
 // - Seechers: the number of seechers (set to -1 if cannot be converted to integer)
 //
-// Torrent url and magnet file extraction are achieved by ExtractTorAndMag().
+// Magnet file extraction are achieved by ExtractMag().
 // Input is the url of the torrent page.
-// Output are the torrent url and the magnet link.
-//
-// Download of torrent file is achieved by DlFile() (very tricky
-// because torrentdownloads has a Cloudflare protection so  does not work 100% of the time).
-// Input is the torrent file url.
-// Output is the local path where the torrent file was downloaded.
+// Output is the magnet link.
 
-package td
+package otts
 
 import (
 	"fmt"
@@ -32,12 +28,11 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-const baseURL string = "https://www.torrentdownloads.me"
+const baseURL string = "https://1337x.to"
 const userAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
 
 // Torrent contains meta information about the torrent
@@ -45,13 +40,14 @@ type Torrent struct {
 	DescURL string
 	Name    string
 	Size    string
+	UplDate string
 	// Seeders and Leechers are converted to -1 if cannot be converted to integers
 	Seeders  int
 	Leechers int
 }
 
 // A typical final url looks like:
-// https://www.torrentdownloads.me/search/?search=Dumas
+// https://1337x.to/search/Dumas/1/
 func buildSearchURL(in string) (string, error) {
 	var URL *url.URL
 	URL, err := url.Parse(baseURL)
@@ -59,11 +55,7 @@ func buildSearchURL(in string) (string, error) {
 		return "", fmt.Errorf("error during url parsing: %v", err)
 	}
 
-	URL.Path += "/search"
-
-	params := url.Values{}
-	params.Add("search", in)
-	URL.RawQuery = params.Encode()
+	URL.Path += "/search/" + in + "/1/"
 
 	return URL.String(), nil
 }
@@ -91,6 +83,7 @@ func fetch(url string) (*http.Response, error) {
 }
 
 func parseSearchPage(r io.Reader) ([]Torrent, error) {
+	// Load html response into GoQuery
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
@@ -100,61 +93,54 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// its name, its size, its seeders, and its leechers
 	var torrents []Torrent
 
-	// Get the total number of items found
-	l := doc.Find(".inner_container ").Children().Size()
+	// Results are located in a clean html <table>
+	doc.Find("tbody tr").Each(func(i int, s *goquery.Selection) {
+		var t Torrent
 
-	doc.Find(".inner_container ").Children().Each(func(i int, s *goquery.Selection) {
-		// Many elements in inner_container are junk (ads, empty stuffs,...) so
-		// we only take elements between 10 and 2 before the end
-		if i > 9 && i < l-2 {
-			// Get path to torrent description page from a "<a>" tag located
-			// inside a <p> tag
-			path, ok := s.Find("p a").Attr("href")
+		// Magnet is the href of the 4th <a> tag
+		s.Find("a").Eq(1).Each(func(i int, ss *goquery.Selection) {
+			t.Name = ss.Text()
+			descURL, ok := ss.Attr("href")
 			if ok {
-				// Get name from the same place as path
-				name := strings.TrimSpace(s.Find("p a").Text())
-				url := baseURL + path
-				t := Torrent{
-					DescURL: url,
-					Name:    name,
-				}
-				// Get leechers, seeders and size from the 3 first <span> tags.
-				// Try to convert leechers and seeders to integers but if does not work
-				// we do not stop for all that: we just set the leechers and seeders to
-				// -1 so the calling library can differentiate it.
-				s.Find("span").Each(func(i int, ss *goquery.Selection) {
-					switch i {
-					case 1:
-						leechersStr := ss.Text()
-						leechers, err := strconv.Atoi(leechersStr)
-						if err != nil {
-							leechers = -1
-						}
-						t.Leechers = leechers
-
-					case 2:
-						seedersStr := ss.Text()
-						seeders, err := strconv.Atoi(seedersStr)
-						if err != nil {
-							seeders = -1
-						}
-						t.Seeders = seeders
-
-					case 3:
-						size := ss.Text()
-						t.Size = size
-					}
-				})
-				torrents = append(torrents, t)
+				t.DescURL = descURL
 			}
-		}
+		})
+
+		// Seeders and leechers are located in the 3rd and 4th <td>.
+		// We convert it to integers and if conversion fails we convert it to -1.
+		s.Find("td").Eq(1).Each(func(i int, ss *goquery.Selection) {
+			seedersStr := ss.Text()
+			seeders, err := strconv.Atoi(seedersStr)
+			if err != nil {
+				seeders = -1
+			}
+			t.Seeders = seeders
+		})
+		s.Find("td").Eq(2).Each(func(i int, ss *goquery.Selection) {
+			leechersStr := ss.Text()
+			leechers, err := strconv.Atoi(leechersStr)
+			if err != nil {
+				leechers = -1
+			}
+			t.Leechers = leechers
+		})
+
+		s.Find("td").Eq(3).Each(func(i int, ss *goquery.Selection) {
+			t.UplDate = ss.Text()
+		})
+
+		s.Find("td").Eq(4).Each(func(i int, ss *goquery.Selection) {
+			t.Size = ss.Text()
+		})
+
+		torrents = append(torrents, t)
 	})
 
 	return torrents, nil
 }
 
 // Lookup takes a user search as a parameter and
-// returns clean torrent information fetched from torrentdownloads.me
+// returns clean torrent information fetched from 1337x.to
 func Lookup(in string) ([]Torrent, error) {
 
 	url, err := buildSearchURL(in)

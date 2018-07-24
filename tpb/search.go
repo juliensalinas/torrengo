@@ -13,6 +13,7 @@
 // - Magnet: the torrent magnet
 // - Name: the torrent name
 // - Size: the size of the file to be downloaded
+// - UplDate: the date of upload
 // - Leechers: the number of leechers (set to -1 if cannot be converted to integer)
 // - Seechers: the number of seechers (set to -1 if cannot be converted to integer)
 
