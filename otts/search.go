@@ -83,30 +83,29 @@ func fetch(url string) (*http.Response, error) {
 }
 
 func parseSearchPage(r io.Reader) ([]Torrent, error) {
-	// Load html response into GoQuery
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
 	// torrents stores a list of torrents made up of the torrent description url,
-	// its name, its size, its seeders, and its leechers
+	// its name, its size, its upload date, its seeders, and its leechers
 	var torrents []Torrent
 
 	// Results are located in a clean html <table>
 	doc.Find("tbody tr").Each(func(i int, s *goquery.Selection) {
 		var t Torrent
 
-		// Magnet is the href of the 4th <a> tag
+		// Name is the text of the 2nd <a> tag, and desc URL is the href
 		s.Find("a").Eq(1).Each(func(i int, ss *goquery.Selection) {
 			t.Name = ss.Text()
-			descURL, ok := ss.Attr("href")
+			path, ok := ss.Attr("href")
 			if ok {
-				t.DescURL = descURL
+				t.DescURL = baseURL + path
 			}
 		})
 
-		// Seeders and leechers are located in the 3rd and 4th <td>.
+		// Seeders and leechers are located in the 2nd and 3rd <td>.
 		// We convert it to integers and if conversion fails we convert it to -1.
 		s.Find("td").Eq(1).Each(func(i int, ss *goquery.Selection) {
 			seedersStr := ss.Text()
@@ -125,10 +124,12 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 			t.Leechers = leechers
 		})
 
+		// Upload date is the text of the 4th <td> tag
 		s.Find("td").Eq(3).Each(func(i int, ss *goquery.Selection) {
 			t.UplDate = ss.Text()
 		})
 
+		// Size is the text of the 5th <td> tag
 		s.Find("td").Eq(4).Each(func(i int, ss *goquery.Selection) {
 			t.Size = ss.Text()
 		})

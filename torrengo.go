@@ -145,7 +145,6 @@ func getAndShowTorrent() {
 
 func openMagOrTorInClient(resource string) {
 	// Open torrent in client
-	log.Debug("Open %s with torrent client.", resource)
 	log.WithFields(log.Fields{
 		"resource": resource,
 		"client":   "Deluge",
@@ -267,7 +266,7 @@ func main() {
 	// Launch all torrent search goroutines
 	for _, source := range s.sourcesToLookup {
 		switch source {
-		// User wants to search archive.org
+		// User wants to search arc
 		case "arc":
 			go func() {
 				arcTorrents, err := arc.Lookup(s.in)
@@ -289,7 +288,7 @@ func main() {
 				arcTorListCh <- torList
 			}()
 
-		// User wants to search torrentdownloads.me
+		// User wants to search td
 		case "td":
 			go func() {
 				tdTorrents, err := td.Lookup(s.in)
@@ -311,7 +310,7 @@ func main() {
 				tdTorListCh <- torList
 			}()
 
-		// User wants to search pirateproxy.mx
+		// User wants to search tpb
 		case "tpb":
 			go func() {
 				tpbTorrents, err := tpb.Lookup(s.in)
@@ -333,7 +332,7 @@ func main() {
 				}
 				tpbTorListCh <- torList
 			}()
-		// User wants to search 1337x.to
+		// User wants to search otts
 		case "otts":
 			go func() {
 				ottsTorrents, err := otts.Lookup(s.in)
@@ -365,10 +364,10 @@ func main() {
 	for _, source := range s.sourcesToLookup {
 		switch source {
 		case "arc":
-			// Get results or error from archive.org
+			// Get results or error from arc
 			select {
 			case arcSearchErr = <-arcSearchErrCh:
-				fmt.Println("An error occured during search on Archive.org.")
+				fmt.Printf("An error occured during search on %v\n", sources["arc"])
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -377,10 +376,10 @@ func main() {
 				s.out = append(s.out, arcTorList...)
 			}
 		case "td":
-			// Get results or error from torrentdownloads.com
+			// Get results or error from td
 			select {
 			case tdSearchErr = <-tdSearchErrCh:
-				fmt.Println("An error occured during search on TorrentDownloads.com.")
+				fmt.Printf("An error occured during search on %v\n", sources["td"])
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -389,10 +388,10 @@ func main() {
 				s.out = append(s.out, tdTorList...)
 			}
 		case "tpb":
-			// Get results or error from pirateproxy.mx
+			// Get results or error from tpb
 			select {
 			case tpbSearchErr = <-tpbSearchErrCh:
-				fmt.Println("An error occured during search on pirateproxy.mx")
+				fmt.Printf("An error occured during search on %v\n", sources["tpb"])
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -401,10 +400,10 @@ func main() {
 				s.out = append(s.out, tpbTorList...)
 			}
 		case "otts":
-			// Get results or error from 1337x.to
+			// Get results or error from otts
 			select {
 			case ottsSearchErr = <-ottsSearchErrCh:
-				fmt.Println("An error occured during search on 1337x.to")
+				fmt.Printf("An error occured during search on %v\n", sources["otts"])
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -511,6 +510,15 @@ func main() {
 	case "tpb":
 		openMagOrTorInClient(ft.magnet)
 	case "otts":
-
+		ft.magnet, err = otts.ExtractMag(ft.descURL)
+		if err != nil {
+			fmt.Println("An error occured while retrieving magnet.")
+			log.WithFields(log.Fields{
+				"descURL":         ft.descURL,
+				"sourcesToLookup": s.sourcesToLookup,
+				"error":           err,
+			}).Fatal("Could not retrieve magnet")
+		}
+		openMagOrTorInClient(ft.magnet)
 	}
 }

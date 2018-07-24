@@ -81,7 +81,6 @@ func fetch(url string) (*http.Response, error) {
 }
 
 func parseSearchPage(r io.Reader) ([]Torrent, error) {
-	// Load html response into GoQuery
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)

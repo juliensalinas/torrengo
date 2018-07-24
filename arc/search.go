@@ -91,7 +91,6 @@ func fetch(url string) (*http.Response, error) {
 // parse parses an html slice of bytes and returns a clean list
 // of torrents found in this page
 func parseSearchPage(r io.Reader) ([]Torrent, error) {
-
 	// Load html response into GoQuery
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {

@@ -156,7 +156,6 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // Lookup takes a user search as a parameter and
 // returns clean torrent information fetched from torrentdownloads.me
 func Lookup(in string) ([]Torrent, error) {
-
 	url, err := buildSearchURL(in)
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
