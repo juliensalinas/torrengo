@@ -21,7 +21,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-// lineBreak sets the OS dependent line break (initialized in main())
+// lineBreak sets the OS dependent line break (initialized in init())
 var lineBreak string
 
 // sources maps source short names to real names
@@ -155,6 +155,7 @@ func openMagOrTorInClient(resource string) {
 	}).Debug("Opening magnet link or torrent file with torrent client")
 	fmt.Println("opening torrent in client...")
 	cmd := exec.Command("deluge", resource)
+
 	// Use Start() instead of Run() because do not want to wait for the torrent
 	// client process to complete (detached process).
 	err := cmd.Start()
@@ -200,19 +201,19 @@ func init() {
 	// Log filename and line number.
 	// Should be removed from production because adds a performance cost.
 	log.AddHook(filename.NewHook())
+
+	// Set custom line break in order for the script to work on any OS
+	if runtime.GOOS == "windows" {
+		lineBreak = "\r\n"
+	} else {
+		lineBreak = "\n"
+	}
 }
 
 // TODO: improve interaction with user
 // TODO: if no result found, not display an empty table
 // TODO: tpb is changing very frequently so implement a proxy lookup
 func main() {
-
-	// Custom line break in order for the script to work on any OS
-	if runtime.GOOS == "windows" {
-		lineBreak = "\r\n"
-	} else {
-		lineBreak = "\n"
-	}
 
 	// Get command line flags and arguments
 	usrSourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
