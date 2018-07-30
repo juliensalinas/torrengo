@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,6 +20,20 @@ import (
 	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/olekukonko/tablewriter"
 )
+
+// lineBreak sets the OS dependent line break (initialized in main())
+var lineBreak string
+
+// sources maps source short names to real names
+var sources = map[string]string{
+	"arc":  "Archive",
+	"td":   "Torrent Downloads",
+	"tpb":  "The Pirate Bay",
+	"otts": "1337x",
+}
+
+// ft is the final torrent the user wants to download
+var ft torrent
 
 // torrent contains meta information about the torrent
 type torrent struct {
@@ -37,17 +52,6 @@ type torrent struct {
 	// Local path where torrent was saved
 	filePath string
 }
-
-// sources maps source short names to real names
-var sources = map[string]string{
-	"arc":  "Archive",
-	"td":   "Torrent Downloads",
-	"tpb":  "The Pirate Bay",
-	"otts": "1337x",
-}
-
-// ft is the final torrent the user wants to download
-var ft torrent
 
 // search represents the user search
 type search struct {
@@ -121,7 +125,7 @@ func render(torrents []torrent) {
 
 // getAndShowMagnet retrieves and displays magnet to user
 func getAndShowMagnet() {
-	fmt.Printf("Here is your magnet link: %s\n", ft.magnet)
+	fmt.Printf("Here is your magnet link: %s%s", ft.magnet, lineBreak)
 }
 
 // getAndShowTorrent retrieves and displays torrent file to user
@@ -140,7 +144,7 @@ func getAndShowTorrent() {
 			"error":   err,
 		}).Fatal("Could not retrieve the torrent file")
 	}
-	fmt.Printf("Here is your torrent file: %s\n", ft.filePath)
+	fmt.Printf("Here is your torrent file: %s%s", ft.filePath, lineBreak)
 }
 
 func openMagOrTorInClient(resource string) {
@@ -203,6 +207,13 @@ func init() {
 // TODO: tpb is changing very frequently so implement a proxy lookup
 func main() {
 
+	// Custom line break in order for the script to work on any OS
+	if runtime.GOOS == "windows" {
+		lineBreak = "\r\n"
+	} else {
+		lineBreak = "\n"
+	}
+
 	// Get command line flags and arguments
 	usrSourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
 		"you want to search (e.g. arc,td,tbp). Choices: arc | td | tpb | all. "+
@@ -229,7 +240,7 @@ func main() {
 			break
 		}
 		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" && usrSource != "otts" {
-			fmt.Printf("This website is not correct: %v\n", usrSource)
+			fmt.Printf("This website is not correct: %v%v", usrSource, lineBreak)
 			log.WithFields(log.Fields{
 				"sourcesList": cleanedUsrSourcesSlc,
 				"wrongSource": usrSource,
@@ -367,7 +378,7 @@ func main() {
 			// Get results or error from arc
 			select {
 			case arcSearchErr = <-arcSearchErrCh:
-				fmt.Printf("An error occured during search on %v\n", sources["arc"])
+				fmt.Printf("An error occured during search on %v%v", sources["arc"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -379,7 +390,7 @@ func main() {
 			// Get results or error from td
 			select {
 			case tdSearchErr = <-tdSearchErrCh:
-				fmt.Printf("An error occured during search on %v\n", sources["td"])
+				fmt.Printf("An error occured during search on %v%v", sources["td"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -391,7 +402,7 @@ func main() {
 			// Get results or error from tpb
 			select {
 			case tpbSearchErr = <-tpbSearchErrCh:
-				fmt.Printf("An error occured during search on %v\n", sources["tpb"])
+				fmt.Printf("An error occured during search on %v%v", sources["tpb"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -403,7 +414,7 @@ func main() {
 			// Get results or error from otts
 			select {
 			case ottsSearchErr = <-ottsSearchErrCh:
-				fmt.Printf("An error occured during search on %v\n", sources["otts"])
+				fmt.Printf("An error occured during search on %v%v", sources["otts"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
 					"error": err,
@@ -433,12 +444,13 @@ func main() {
 	fmt.Println("Please select a torrent to download (enter its index): ")
 	var index int
 	for {
-		indexStr, err := reader.ReadString('\n')
+		indexStr, err := reader.ReadString('\n') // returns string + delimiter
 		if err != nil {
 			fmt.Println("Could not read your input, please try again (should be an integer):")
 			continue
 		}
-		index, err = strconv.Atoi(strings.TrimSuffix(indexStr, "\n"))
+		// Remove delimiter which depends on OS + white spaces if any, and convert to integer
+		index, err = strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(indexStr, lineBreak)))
 		if err != nil {
 			fmt.Println("Please enter an integer:")
 			continue
@@ -483,7 +495,7 @@ func main() {
 			// Ask user to choose between file download and magnet download
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +
-				"\n1) Magnet link\n2) Torrent file (careful: not working 100% of the time)")
+				lineBreak + "1) Magnet link" + lineBreak + "2) Torrent file (careful: not working 100% of the time)")
 			var choice int
 			for {
 				choiceStr, err := reader.ReadString('\n')
@@ -491,7 +503,7 @@ func main() {
 					fmt.Println("Could not read your input, please enter your choice (1 or 2):")
 					continue
 				}
-				choice, err = strconv.Atoi(strings.TrimSuffix(choiceStr, "\n"))
+				choice, err = strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(choiceStr, lineBreak)))
 				if err != nil {
 					fmt.Println("Please enter an integer:")
 					continue
