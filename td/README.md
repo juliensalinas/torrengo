@@ -1,0 +1,15 @@
+# Description of the TorrentDownloads scraping library
+
+**td** searches torrents on torrentdownloads.me
+
+The **Lookup** function searches torrentdownloads.me and returns a clean list of torrents. For each torrent the following info is retrieved:
+
+* name
+* description page
+* size
+* number of seeders
+* number of leechers
+
+The **ExtractTorAndMag** function opens a torrent description page and retrieves the torrent file url + the torrent magnet link.
+
+The **DlFile** downloads a torrent file.

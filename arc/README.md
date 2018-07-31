@@ -1,0 +1,10 @@
+# Description of the Archive.org scraping library
+
+**arc** searches torrents on Archive.org
+
+The **Lookup** function searches Archive.org and returns a clean list of torrents. For each torrent the following info is retrieved:
+
+* name
+* description page
+
+The **FindAndDlFile** function opens a torrent description page, retrieves the torrent file url, and downloads the torrent file.

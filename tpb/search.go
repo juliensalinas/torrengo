@@ -1,4 +1,4 @@
-// Package tpb searches and extracts magnet link from www.thepiratebay.se.net
+// Package tpb searches and extracts magnet link from ThePirateBay
 //
 // No check is done here regarding the user input. This check should be
 // achieved by the caller.
@@ -45,7 +45,7 @@ type Torrent struct {
 }
 
 // A typical final url looks like:
-// http://thepiratebay.se.net/search/dumas/0/99/0
+// baseURL + /search/dumas/0/99/0
 func buildSearchURL(in string) (string, error) {
 	var URL *url.URL
 	URL, err := url.Parse(baseURL)
@@ -143,7 +143,7 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 }
 
 // Lookup takes a user search as a parameter and
-// returns clean torrent information fetched from thepiratebeach.net
+// returns clean torrent information fetched from ThePirateBay
 func Lookup(in string) ([]Torrent, error) {
 
 	url, err := buildSearchURL(in)
