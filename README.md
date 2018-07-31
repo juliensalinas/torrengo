@@ -21,9 +21,9 @@ The whole program can be installed and compiled with the usual Go tools:
 
 1. Set your Go environment variables properly
 1. `go get github.com/juliensalinas/torrengo`
-1. `go build`...
+1. `go build torrengo`
 
-Each website scraper is an independent library that can be installed and reused. For example if you only want to use the Archive.org scraping library, simply do:
+Each website's scraper is an independent library that can be installed and reused. For example if you only want to use the Archive.org scraping library, simply do:
 
 * `go get github.com/juliensalinas/torrengo/arc`
 
@@ -39,10 +39,10 @@ If you want to search from a specific source (let's say Archive.org):
 
 Sources names:
 
-* <https://archive.org>: **arc**
-* <https://pirateproxy.mx>: **tpb**
-* <http://torrentdownloads.me>: **td**
-* <http://1337x.to>: **otts**
+* <https://archive.org>: arc
+* <https://pirateproxy.mx>: tpb
+* <http://torrentdownloads.me>: td
+* <http://1337x.to>: otts
 
 If you want to search from a several specific sources (let's say Archive.org and ThePirateBay), use commas:
 
