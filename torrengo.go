@@ -1,3 +1,5 @@
+// TODO: tpb is changing very frequently so implement a proxy lookup
+// TODO: set a timeout per search goroutine
 package main
 
 import (
@@ -31,6 +33,8 @@ var sources = map[string]string{
 	"tpb":  "The Pirate Bay",
 	"otts": "1337x",
 }
+
+var isVerbose bool
 
 // ft is the final torrent the user wants to download
 var ft torrent
@@ -128,8 +132,14 @@ func getTorrentFile() {
 	var err error
 	switch ft.source {
 	case "arc":
+		log.WithFields(log.Fields{
+			"sourceToSearch": "arc",
+		}).Debug("Download torrent file")
 		ft.filePath, err = arc.FindAndDlFile(ft.descURL)
 	case "td":
+		log.WithFields(log.Fields{
+			"sourceToSearch": "td",
+		}).Debug("Download torrent file")
 		ft.filePath, err = td.DlFile(ft.fileURL)
 	}
 	if err != nil {
@@ -141,6 +151,7 @@ func getTorrentFile() {
 	}
 }
 
+// openMagOrTorInClient opens magnet link or torrent file in user torrent client
 func openMagOrTorInClient(resource string) {
 	// Open torrent in client
 	log.WithFields(log.Fields{
@@ -180,22 +191,27 @@ func rmDuplicates(elements []string) []string {
 	return result
 }
 
-func init() {
-	// TODO: log to file
-	// TODO: mention log path in every user error message
-	// TODO: log as JSON for production
+// setLogger sets various logging parameters
+func setLogger(isVerbose bool) {
+	// If verbose, set logger to debug, otherwise display errors only
+	if isVerbose {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.ErrorLevel)
+	}
+
+	// Log as standard text
+	// log.SetFormatter(&log.TextFormatter{})
 
 	// Log as JSON instead of the default ASCII formatter
-	// log.SetFormatter(&log.JSONFormatter{})
-	log.SetFormatter(&log.TextFormatter{})
-
-	// Only log the warning severity or above
-	log.SetLevel(log.ErrorLevel)
+	log.SetFormatter(&log.JSONFormatter{})
 
 	// Log filename and line number.
 	// Should be removed from production because adds a performance cost.
 	log.AddHook(filename.NewHook())
+}
 
+func init() {
 	// Set custom line break in order for the script to work on any OS
 	if runtime.GOOS == "windows" {
 		lineBreak = "\r\n"
@@ -204,19 +220,20 @@ func init() {
 	}
 }
 
-// TODO: tpb is changing very frequently so implement a proxy lookup
-// TODO: set a timeout per search goroutine
 func main() {
-
 	// Get command line flags and arguments
-	usrSourcesPtr := flag.String("w", "all", "A comma separated list of websites "+
+	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
 		"you want to search (e.g. arc,td,tbp). Choices: arc | td | tpb | all. "+
-		"\"all\" searches all websites.")
+		"\"all\" searches all sources.")
+	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
-	args := flag.Args()
+
+	// Set logging parameters depending on the verbose user input
+	isVerbose = *isVerbosePtr
+	setLogger(isVerbose)
 
 	// If no command line argument is supplied, then we stop here
-	if len(args) == 0 {
+	if len(flag.Args()) == 0 {
 		fmt.Println("Please enter proper arguments (-h for help).")
 		os.Exit(1)
 	}
@@ -242,7 +259,7 @@ func main() {
 		}
 	}
 	s := search{
-		in:              strings.Join(args, " "),
+		in:              strings.Join(flag.Args(), " "),
 		sourcesToLookup: cleanedUsrSourcesSlc,
 	}
 
@@ -269,11 +286,18 @@ func main() {
 	ottsSearchErrCh := make(chan error)
 
 	// Launch all torrent search goroutines
+	log.WithFields(log.Fields{
+		"input": s.in,
+	}).Debug("Launch search...")
 	for _, source := range s.sourcesToLookup {
 		switch source {
 		// User wants to search arc
 		case "arc":
 			go func() {
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "arc",
+				}).Debug("Start search goroutine")
 				arcTorrents, err := arc.Lookup(s.in)
 				if err != nil {
 					arcSearchErrCh <- err
@@ -296,6 +320,10 @@ func main() {
 		// User wants to search td
 		case "td":
 			go func() {
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "td",
+				}).Debug("Start search goroutine")
 				tdTorrents, err := td.Lookup(s.in)
 				if err != nil {
 					tdSearchErrCh <- err
@@ -318,6 +346,10 @@ func main() {
 		// User wants to search tpb
 		case "tpb":
 			go func() {
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "tpb",
+				}).Debug("Start search goroutine")
 				tpbTorrents, err := tpb.Lookup(s.in)
 				if err != nil {
 					tpbSearchErrCh <- err
@@ -340,6 +372,10 @@ func main() {
 		// User wants to search otts
 		case "otts":
 			go func() {
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "otts",
+				}).Debug("Start search goroutine")
 				ottsTorrents, err := otts.Lookup(s.in)
 				if err != nil {
 					ottsSearchErrCh <- err
@@ -379,6 +415,10 @@ func main() {
 				}).Error("The arc search goroutine broke")
 			case arcTorList := <-arcTorListCh:
 				s.out = append(s.out, arcTorList...)
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "arc",
+				}).Debug("Got search results from goroutine")
 			}
 		case "td":
 			// Get results or error from td
@@ -391,6 +431,10 @@ func main() {
 				}).Error("The td search goroutine broke")
 			case tdTorList := <-tdTorListCh:
 				s.out = append(s.out, tdTorList...)
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "td",
+				}).Debug("Got search results from goroutine")
 			}
 		case "tpb":
 			// Get results or error from tpb
@@ -415,6 +459,10 @@ func main() {
 				}).Error("The otts search goroutine broke")
 			case ottsTorList := <-ottsTorListCh:
 				s.out = append(s.out, ottsTorList...)
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "otts",
+				}).Debug("Got search results from goroutine")
 			}
 		}
 	}
@@ -434,9 +482,11 @@ func main() {
 	}
 
 	// Sort results (on seeders)
+	log.Debug("Sort results")
 	s.sortOut()
 
 	// Render the list of results to user in terminal
+	log.Debug("Render results")
 	render(s.out)
 
 	// Read from user input the index of torrent we want to download
@@ -460,6 +510,9 @@ func main() {
 
 	// Final torrent we're working on as of now
 	ft = s.out[index]
+	log.WithFields(log.Fields{
+		"finalTorrent": ft,
+	}).Debug("Got the final torrent to work on")
 
 	// Read from user input whether he wants to open torrent in client or not
 	reader = bufio.NewReader(os.Stdin)
@@ -485,6 +538,9 @@ func main() {
 			openMagOrTorInClient(ft.filePath)
 		}
 	case "td":
+		log.WithFields(log.Fields{
+			"sourceToSearch": "td",
+		}).Debug("Extract magnet and torrent file url")
 		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
 		if err != nil {
 			fmt.Println("An error occured while retrieving magnet and torrent file.")
@@ -555,6 +611,9 @@ func main() {
 			openMagOrTorInClient(ft.magnet)
 		}
 	case "otts":
+		log.WithFields(log.Fields{
+			"sourceToSearch": "otts",
+		}).Debug("Extract magnet")
 		ft.magnet, err = otts.ExtractMag(ft.descURL)
 		if err != nil {
 			fmt.Println("An error occured while retrieving magnet.")
