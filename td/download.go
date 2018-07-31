@@ -44,6 +44,9 @@ func DlFile(fileURL string) (string, error) {
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
 	fileName := s[len(s)-1]
+	s = strings.Split(fileName, ".torrent")
+	fileName = s[0]
+	fileName += ".torrent"
 
 	// Create local torrent file
 	out, err := os.Create(fileName)
@@ -60,7 +63,6 @@ func DlFile(fileURL string) (string, error) {
 	client := http.Client{Transport: cfScraper}
 
 	// Download torrent
-	fmt.Println(fileURL)
 	resp, err := client.Get(fileURL)
 	if err != nil {
 		return "", fmt.Errorf("could not download the torrent file: %v", err)
