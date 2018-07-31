@@ -123,13 +123,8 @@ func render(torrents []torrent) {
 	table.Render()
 }
 
-// getAndShowMagnet retrieves and displays magnet to user
-func getAndShowMagnet() {
-	fmt.Printf("Here is your magnet link: %s%s", ft.magnet, lineBreak)
-}
-
-// getAndShowTorrent retrieves and displays torrent file to user
-func getAndShowTorrent() {
+// getTorrentFile retrieves and displays torrent file to user
+func getTorrentFile() {
 	var err error
 	switch ft.source {
 	case "arc":
@@ -144,7 +139,6 @@ func getAndShowTorrent() {
 			"error":   err,
 		}).Fatal("Could not retrieve the torrent file")
 	}
-	fmt.Printf("Here is your torrent file: %s%s", ft.filePath, lineBreak)
 }
 
 func openMagOrTorInClient(resource string) {
@@ -153,7 +147,7 @@ func openMagOrTorInClient(resource string) {
 		"resource": resource,
 		"client":   "Deluge",
 	}).Debug("Opening magnet link or torrent file with torrent client")
-	fmt.Println("opening torrent in client...")
+	fmt.Println("Opening torrent in client...")
 	cmd := exec.Command("deluge", resource)
 
 	// Use Start() instead of Run() because do not want to wait for the torrent
@@ -196,7 +190,7 @@ func init() {
 	log.SetFormatter(&log.TextFormatter{})
 
 	// Only log the warning severity or above
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.ErrorLevel)
 
 	// Log filename and line number.
 	// Should be removed from production because adds a performance cost.
@@ -210,9 +204,8 @@ func init() {
 	}
 }
 
-// TODO: improve interaction with user
-// TODO: if no result found, not display an empty table
 // TODO: tpb is changing very frequently so implement a proxy lookup
+// TODO: set a timeout per search goroutine
 func main() {
 
 	// Get command line flags and arguments
@@ -434,6 +427,12 @@ func main() {
 		}).Fatal("All searches broke")
 	}
 
+	// Stop the program if no result found
+	if len(s.out) == 0 {
+		fmt.Println("No result found...")
+		os.Exit(1)
+	}
+
 	// Sort results (on seeders)
 	s.sortOut()
 
@@ -462,11 +461,29 @@ func main() {
 	// Final torrent we're working on as of now
 	ft = s.out[index]
 
+	// Read from user input whether he wants to open torrent in client or not
+	reader = bufio.NewReader(os.Stdin)
+	fmt.Println("Do you want to open torrent in Deluge client? y / n")
+	var launchClient string
+	for {
+		launchClientStr, err := reader.ReadString('\n') // returns string + delimiter
+		if err != nil {
+			fmt.Println("Could not read your input, please try again (should be 'y' or 'n'):")
+			continue
+		}
+		// Remove delimiter which depends on OS + white spaces if any
+		launchClient = strings.TrimSpace(strings.TrimSuffix(launchClientStr, lineBreak))
+		break
+	}
+
 	// Download torrent and optionnaly open in torrent client
 	switch ft.source {
 	case "arc":
-		getAndShowTorrent()
-		openMagOrTorInClient(ft.filePath)
+		getTorrentFile()
+		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
+		if launchClient == "y" {
+			openMagOrTorInClient(ft.filePath)
+		}
 	case "td":
 		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
 		if err != nil {
@@ -482,12 +499,19 @@ func main() {
 			log.WithFields(log.Fields{
 				"torrentURL": ft.fileURL,
 			}).Debug("Could not find a torrent file but successfully fetched a magnet link on the description page")
-			getAndShowMagnet()
+			fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
+			if launchClient == "y" {
+				openMagOrTorInClient(ft.magnet)
+			}
 		case ft.fileURL != "" && ft.magnet == "":
 			log.WithFields(log.Fields{
 				"magnetLink": ft.magnet,
 			}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
-			getAndShowTorrent()
+			getTorrentFile()
+			fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
+			if launchClient == "y" {
+				openMagOrTorInClient(ft.filePath)
+			}
 		default:
 			log.WithFields(log.Fields{
 				"torrentURL": ft.fileURL,
@@ -513,15 +537,23 @@ func main() {
 			}
 			switch choice {
 			case 1:
-				getAndShowMagnet()
-				openMagOrTorInClient(ft.magnet)
+				fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
+				if launchClient == "y" {
+					openMagOrTorInClient(ft.magnet)
+				}
 			case 2:
-				getAndShowTorrent()
-				openMagOrTorInClient(ft.filePath)
+				getTorrentFile()
+				fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
+				if launchClient == "y" {
+					openMagOrTorInClient(ft.filePath)
+				}
 			}
 		}
 	case "tpb":
-		openMagOrTorInClient(ft.magnet)
+		fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
+		if launchClient == "y" {
+			openMagOrTorInClient(ft.magnet)
+		}
 	case "otts":
 		ft.magnet, err = otts.ExtractMag(ft.descURL)
 		if err != nil {
@@ -532,6 +564,9 @@ func main() {
 				"error":           err,
 			}).Fatal("Could not retrieve magnet")
 		}
-		openMagOrTorInClient(ft.magnet)
+		fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
+		if launchClient == "y" {
+			openMagOrTorInClient(ft.magnet)
+		}
 	}
 }
