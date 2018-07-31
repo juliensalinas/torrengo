@@ -27,7 +27,7 @@ Each website's scraper is an independent library that can be installed and reuse
 
 * `go get github.com/juliensalinas/torrengo/arc`
 
-### Use
+### Usage
 
 Searching "Dumas Montecristo" from all sources is as simple as:
 
