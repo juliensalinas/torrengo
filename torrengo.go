@@ -222,10 +222,22 @@ func init() {
 
 func main() {
 	// Get command line flags and arguments
-	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
-		"you want to search (e.g. arc,td,tbp). Choices: arc | td | tpb | all. "+
-		"\"all\" searches all sources.")
-	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
+	flag.Usage = func() {
+		fmt.Fprintf(
+			flag.CommandLine.Output(),
+			"Usage of %s:%s%s %s [-s sources] [-v] keyword1 keyword2 keyword3 ... %s%s",
+			os.Args[0],
+			lineBreak,
+			lineBreak,
+			os.Args[0],
+			lineBreak,
+			lineBreak,
+		)
+		flag.PrintDefaults()
+	}
+	usrSourcesPtr := flag.String("s", "all", "(optional) A comma separated list of sources "+
+		"you want to search (e.g. arc,td,tpb)."+lineBreak+"Choices: arc | td | tpb | otts. ")
+	isVerbosePtr := flag.Bool("v", false, "(optional) Verbose mode. Use it to see more logs.")
 	flag.Parse()
 
 	// Set logging parameters depending on the verbose user input
@@ -516,7 +528,7 @@ func main() {
 
 	// Read from user input whether he wants to open torrent in client or not
 	reader = bufio.NewReader(os.Stdin)
-	fmt.Println("Do you want to open torrent in Deluge client? y / n")
+	fmt.Println("Do you want to open torrent in Deluge client? [y / n]")
 	var launchClient string
 	for {
 		launchClientStr, err := reader.ReadString('\n') // returns string + delimiter
@@ -576,7 +588,7 @@ func main() {
 			// Ask user to choose between file download and magnet download
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +
-				lineBreak + "1) Magnet link" + lineBreak + "2) Torrent file (careful: not working 100% of the time)")
+				lineBreak + "[1] Magnet link" + lineBreak + "[2] Torrent file (careful: not working 100% of the time)")
 			var choice int
 			for {
 				choiceStr, err := reader.ReadString('\n')
