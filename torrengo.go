@@ -225,19 +225,17 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(
 			flag.CommandLine.Output(),
-			"Usage of %s:%s%s %s [-s sources] [-v] keyword1 keyword2 keyword3 ... %s%s",
-			os.Args[0],
-			lineBreak,
-			lineBreak,
-			os.Args[0],
-			lineBreak,
-			lineBreak,
+			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
+				"Examples:%[2]s%[2]s\tSearch 'Alexandre Dumas' on all sources:%[2]s\t\t%[1]s Alexandre Dumas%[2]s"+
+				"\tSearch 'Alexandre Dumas' on Archive.org and ThePirateBay only:%[2]s\t\t%[1]s -s arc,tpb Alexandre Dumas%[2]s%[2]s"+
+				"Options:%[2]s%[2]s",
+			os.Args[0], lineBreak,
 		)
 		flag.PrintDefaults()
 	}
-	usrSourcesPtr := flag.String("s", "all", "(optional) A comma separated list of sources "+
-		"you want to search (e.g. arc,td,tpb)."+lineBreak+"Choices: arc | td | tpb | otts. ")
-	isVerbosePtr := flag.Bool("v", false, "(optional) Verbose mode. Use it to see more logs.")
+	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
+		"you want to search."+lineBreak+"Choices: arc (Archive.org) | td (TorrentDownloads) | tpb (ThePirateBay) | otts (1337x). ")
+	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
 
 	// Set logging parameters depending on the verbose user input
