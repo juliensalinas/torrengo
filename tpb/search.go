@@ -22,12 +22,12 @@ package tpb
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/juliensalinas/torrengo/core"
 )
 
 const baseURL string = "https://pirateproxy.mx"
@@ -56,28 +56,6 @@ func buildSearchURL(in string) (string, error) {
 	URL.Path += "/search/" + in + "/0/99/0"
 
 	return URL.String(), nil
-}
-
-func fetch(url string) (*http.Response, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not create request: %v", err)
-	}
-
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("could not launch request: %v", err)
-	}
-
-	if resp.StatusCode != 200 {
-		resp.Body.Close()
-		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
-	}
-
-	return resp, nil
 }
 
 func parseSearchPage(r io.Reader) ([]Torrent, error) {
@@ -151,7 +129,7 @@ func Lookup(in string) ([]Torrent, error) {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
 
-	resp, err := fetch(url)
+	resp, err := core.Fetch(url)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

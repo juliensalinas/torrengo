@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/juliensalinas/torrengo/core"
+
 	"github.com/PuerkitoBio/goquery"
 )
 
@@ -29,7 +31,7 @@ func parseDescPage(r io.Reader) (string, error) {
 
 // ExtractMag opens the torrent description page and extracts the magnet link
 func ExtractMag(descURL string) (string, error) {
-	resp, err := fetch(descURL)
+	resp, err := core.Fetch(descURL)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}

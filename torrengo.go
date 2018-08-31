@@ -1,5 +1,6 @@
 // TODO: tpb is changing very frequently so implement a proxy lookup
 // TODO: set a timeout per search goroutine
+// TODO: write tests and use dependency injection (https://medium.com/@zach_4342/dependency-injection-in-golang-e587c69478a8)
 package main
 
 import (

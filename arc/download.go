@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/juliensalinas/torrengo/core"
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
@@ -89,7 +90,7 @@ func dlFile(fileURL string) (string, error) {
 // file. Returns the local path of downloaded torrent file.
 func FindAndDlFile(descURL string) (string, error) {
 	// Fetch url
-	resp, err := fetch(descURL)
+	resp, err := core.Fetch(descURL)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
