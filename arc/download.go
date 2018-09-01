@@ -60,7 +60,7 @@ func dlFile(fileURL string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not create request: %v", err)
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", core.UserAgent)
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("could not download the torrent file: %v", err)

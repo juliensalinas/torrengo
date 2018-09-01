@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-const userAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
+const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
 
 // Fetch opens a url and returns the resulting html page.
 // Cannot use the straight http.Get function because need to
@@ -17,7 +17,7 @@ func Fetch(url string) (*http.Response, error) {
 		return nil, fmt.Errorf("could not create request: %v", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", UserAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
