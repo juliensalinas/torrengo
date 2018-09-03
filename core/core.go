@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// UserAgent is a customer browser user agent used in every HTTP connections
 const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
 
 // Fetch opens a url and returns the resulting html page.

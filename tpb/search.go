@@ -22,15 +22,17 @@ package tpb
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
+	log "github.com/sirupsen/logrus"
 )
 
-const baseURL string = "https://pirateproxy.mx"
+const proxiesListURL = "https://proxybay.bz/"
 
 // Torrent contains meta information about the torrent
 type Torrent struct {
@@ -45,7 +47,7 @@ type Torrent struct {
 
 // A typical final url looks like:
 // baseURL + /search/dumas/0/99/0
-func buildSearchURL(in string) (string, error) {
+func buildSearchURL(baseURL string, in string) (string, error) {
 	var URL *url.URL
 	URL, err := url.Parse(baseURL)
 	if err != nil {
@@ -123,21 +125,51 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // returns clean torrent information fetched from ThePirateBay
 func Lookup(in string) ([]Torrent, error) {
 
-	url, err := buildSearchURL(in)
+	proxiesList, err := getProxies()
 	if err != nil {
-		return nil, fmt.Errorf("error while building url: %v", err)
+		return nil, fmt.Errorf("error while retrieving proxies: %v", err)
 	}
 
-	resp, err := core.Fetch(url)
-	if err != nil {
-		return nil, fmt.Errorf("error while fetching url: %v", err)
-	}
-	defer resp.Body.Close()
+	httpRespErrCh := make(chan struct{})
+	httpRespCh := make(chan *http.Response)
 
-	torrents, err := parseSearchPage(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
+	for _, baseURL := range proxiesList {
+
+		url, err := buildSearchURL(baseURL, in)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err":     err,
+				"baseURL": baseURL,
+			}).Info("Could not build url for one of the TPB proxies")
+		}
+
+		go func(url string) {
+			resp, err := core.Fetch(url)
+			if err != nil {
+				fmt.Println(err)
+				httpRespErrCh <- struct{}{}
+			}
+			fmt.Println(err)
+			httpRespCh <- resp
+		}(url)
+
 	}
 
-	return torrents, nil
+	var torrents []Torrent
+	for i := 0; i < len(proxiesList); i++ {
+		select {
+		case <-httpRespErrCh:
+			// continue
+		case resp := <-httpRespCh:
+			fmt.Println(resp)
+			// torrents, err = parseSearchPage(resp.Body)
+			// if err != nil {
+			// 	return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
+			// }
+			// resp.Body.Close()
+			return torrents, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no TPB proxy working")
 }
