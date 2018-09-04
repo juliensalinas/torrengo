@@ -135,23 +135,23 @@ func Lookup(in string) ([]Torrent, error) {
 
 	for _, baseURL := range proxiesList {
 
-		url, err := buildSearchURL(baseURL, in)
+		fullURL, err := buildSearchURL(baseURL, in)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"err":     err,
 				"baseURL": baseURL,
 			}).Info("Could not build url for one of the TPB proxies")
+			continue
 		}
 
 		go func(url string) {
 			resp, err := core.Fetch(url)
 			if err != nil {
-				fmt.Println(err)
 				httpRespErrCh <- struct{}{}
+				return
 			}
-			fmt.Println(err)
 			httpRespCh <- resp
-		}(url)
+		}(fullURL)
 
 	}
 
@@ -159,17 +159,16 @@ func Lookup(in string) ([]Torrent, error) {
 	for i := 0; i < len(proxiesList); i++ {
 		select {
 		case <-httpRespErrCh:
-			// continue
+
 		case resp := <-httpRespCh:
-			fmt.Println(resp)
-			// torrents, err = parseSearchPage(resp.Body)
-			// if err != nil {
-			// 	return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
-			// }
-			// resp.Body.Close()
+			torrents, err = parseSearchPage(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
+			}
+			resp.Body.Close()
 			return torrents, nil
 		}
 	}
 
-	return nil, fmt.Errorf("no TPB proxy working")
+	return nil, fmt.Errorf("no tpb proxy working")
 }

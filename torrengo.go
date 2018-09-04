@@ -312,6 +312,7 @@ func main() {
 				arcTorrents, err := arc.Lookup(s.in)
 				if err != nil {
 					arcSearchErrCh <- err
+					return
 				}
 				var torList []torrent
 				for _, arcTorrent := range arcTorrents {
@@ -338,6 +339,7 @@ func main() {
 				tdTorrents, err := td.Lookup(s.in)
 				if err != nil {
 					tdSearchErrCh <- err
+					return
 				}
 				var torList []torrent
 				for _, tdTorrent := range tdTorrents {
@@ -364,6 +366,7 @@ func main() {
 				tpbTorrents, err := tpb.Lookup(s.in)
 				if err != nil {
 					tpbSearchErrCh <- err
+					return
 				}
 				var torList []torrent
 				for _, tpbTorrent := range tpbTorrents {
@@ -390,6 +393,7 @@ func main() {
 				ottsTorrents, err := otts.Lookup(s.in)
 				if err != nil {
 					ottsSearchErrCh <- err
+					return
 				}
 				var torList []torrent
 				for _, ottsTorrent := range ottsTorrents {
@@ -422,7 +426,7 @@ func main() {
 				fmt.Printf("An error occured during search on %v%v", sources["arc"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
-					"error": err,
+					"error": arcSearchErr,
 				}).Error("The arc search goroutine broke")
 			case arcTorList := <-arcTorListCh:
 				s.out = append(s.out, arcTorList...)
@@ -438,7 +442,7 @@ func main() {
 				fmt.Printf("An error occured during search on %v%v", sources["td"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
-					"error": err,
+					"error": tdSearchErr,
 				}).Error("The td search goroutine broke")
 			case tdTorList := <-tdTorListCh:
 				s.out = append(s.out, tdTorList...)
@@ -454,7 +458,7 @@ func main() {
 				fmt.Printf("An error occured during search on %v%v", sources["tpb"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
-					"error": err,
+					"error": tpbSearchErr,
 				}).Error("The tpb search goroutine broke")
 			case tpbTorList := <-tpbTorListCh:
 				s.out = append(s.out, tpbTorList...)
@@ -466,7 +470,7 @@ func main() {
 				fmt.Printf("An error occured during search on %v%v", sources["otts"], lineBreak)
 				log.WithFields(log.Fields{
 					"input": s.in,
-					"error": err,
+					"error": ottsSearchErr,
 				}).Error("The otts search goroutine broke")
 			case ottsTorList := <-ottsTorListCh:
 				s.out = append(s.out, ottsTorList...)
