@@ -122,7 +122,10 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 }
 
 // Lookup takes a user search as a parameter and
-// returns clean torrent information fetched from ThePirateBay
+// returns clean torrent information fetched from ThePirateBay.
+// It first looks for the best ThePirateBay proxies and then
+// concurrently fetches all of them and retrieve results from
+// the quickest one.
 func Lookup(in string) ([]Torrent, error) {
 
 	proxiesList, err := getProxies()
@@ -159,7 +162,6 @@ func Lookup(in string) ([]Torrent, error) {
 	for i := 0; i < len(proxiesList); i++ {
 		select {
 		case <-httpRespErrCh:
-
 		case resp := <-httpRespCh:
 			torrents, err = parseSearchPage(resp.Body)
 			if err != nil {

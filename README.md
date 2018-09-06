@@ -9,7 +9,7 @@ Torrengo is a CLI (command line) program written in Go which concurrently search
 Current supported sources are the following:
 
 1. <https://archive.org> (called **arc** internally)
-1. <http://pirateproxy.mx> (called **tpb** internally)
+1. all The Pirate Bay urls located on <https://proxybay.bz> (called **tpb** internally)
 1. <http://torrentdownloads.me> (called **td** internally)
 1. <http://1337x.to> (called **otts** internally)
 
@@ -40,7 +40,7 @@ If you want to search from a specific source (let's say Archive.org):
 Sources names:
 
 * <https://archive.org>: arc
-* <https://pirateproxy.mx>: tpb
+* all The Pirate Bay urls located on <https://proxybay.bz>: tpb
 * <http://torrentdownloads.me>: td
 * <http://1337x.to>: otts
 
