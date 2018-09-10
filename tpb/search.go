@@ -123,21 +123,24 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 
 // Lookup takes a user search as a parameter and
 // returns clean torrent information fetched from ThePirateBay.
-// It first looks for the best ThePirateBay proxies and then
+// It first looks for the ThePirateBay proxies and then
 // concurrently fetches all of them and retrieve results from
 // the quickest one.
 func Lookup(in string) ([]Torrent, error) {
-
+	// Retrieve tpb proxies urls
 	proxiesList, err := getProxies()
 	if err != nil {
 		return nil, fmt.Errorf("error while retrieving proxies: %v", err)
 	}
 
-	httpRespErrCh := make(chan struct{})
+	// Create channels for communicating http response and termination
+	// event in case of error
 	httpRespCh := make(chan *http.Response)
+	httpRespErrCh := make(chan struct{})
 
+	// For each tpb proxy, launch the same request through a new
+	// goroutine
 	for _, baseURL := range proxiesList {
-
 		fullURL, err := buildSearchURL(baseURL, in)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -146,7 +149,6 @@ func Lookup(in string) ([]Torrent, error) {
 			}).Info("Could not build url for one of the TPB proxies")
 			continue
 		}
-
 		go func(url string) {
 			resp, err := core.Fetch(url)
 			if err != nil {
@@ -159,6 +161,11 @@ func Lookup(in string) ([]Torrent, error) {
 	}
 
 	var torrents []Torrent
+
+	// From goroutines receive termination event (in case of error) or
+	// http response. If http response received, it means the tpb proxy
+	// worked properly and was the fastest to answer so parse results from html page
+	// and leave.
 	for i := 0; i < len(proxiesList); i++ {
 		select {
 		case <-httpRespErrCh:
