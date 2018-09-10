@@ -1,4 +1,3 @@
-// TODO: tpb is changing very frequently so implement a proxy lookup
 // TODO: set a timeout per search goroutine
 // TODO: write tests and use dependency injection (https://medium.com/@zach_4342/dependency-injection-in-golang-e587c69478a8)
 package main
@@ -21,6 +20,7 @@ import (
 	"github.com/juliensalinas/torrengo/otts"
 	"github.com/juliensalinas/torrengo/td"
 	"github.com/juliensalinas/torrengo/tpb"
+	"github.com/juliensalinas/torrengo/ygg"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -33,6 +33,7 @@ var sources = map[string]string{
 	"td":   "Torrent Downloads",
 	"tpb":  "The Pirate Bay",
 	"otts": "1337x",
+	"ygg":  "Ygg Torrent",
 }
 
 var isVerbose bool
@@ -235,7 +236,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
-		"you want to search."+lineBreak+"Choices: arc (Archive.org) | td (TorrentDownloads) | tpb (ThePirateBay) | otts (1337x). ")
+		"you want to search."+lineBreak+"Choices: arc (Archive.org) | td (TorrentDownloads) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
 	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
 
@@ -261,7 +262,7 @@ func main() {
 			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb", "otts"}
 			break
 		}
-		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" && usrSource != "otts" {
+		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" && usrSource != "otts" && usrSource != "ygg" {
 			fmt.Printf("This website is not correct: %v%v", usrSource, lineBreak)
 			log.WithFields(log.Fields{
 				"sourcesList": cleanedUsrSourcesSlc,
@@ -289,12 +290,14 @@ func main() {
 	tdTorListCh := make(chan []torrent)
 	tpbTorListCh := make(chan []torrent)
 	ottsTorListCh := make(chan []torrent)
+	yggTorListCh := make(chan []torrent)
 
 	// Channels for errors
 	arcSearchErrCh := make(chan error)
 	tdSearchErrCh := make(chan error)
 	tpbSearchErrCh := make(chan error)
 	ottsSearchErrCh := make(chan error)
+	yggSearchErrCh := make(chan error)
 
 	// Launch all torrent search goroutines
 	log.WithFields(log.Fields{
@@ -410,11 +413,38 @@ func main() {
 				}
 				ottsTorListCh <- torList
 			}()
+		// User wants to search ygg
+		case "ygg":
+			go func() {
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "ygg",
+				}).Debug("Start search goroutine")
+				yggTorrents, err := ygg.Lookup(s.in)
+				if err != nil {
+					yggSearchErrCh <- err
+					return
+				}
+				var torList []torrent
+				for _, yggTorrent := range yggTorrents {
+					t := torrent{
+						descURL:  yggTorrent.DescURL,
+						name:     yggTorrent.Name,
+						size:     yggTorrent.Size,
+						uplDate:  yggTorrent.UplDate,
+						leechers: yggTorrent.Leechers,
+						seeders:  yggTorrent.Seeders,
+						source:   "ygg",
+					}
+					torList = append(torList, t)
+				}
+				yggTorListCh <- torList
+			}()
 		}
 	}
 
 	// Initialize search errors
-	var tdSearchErr, arcSearchErr, tpbSearchErr, ottsSearchErr error
+	var tdSearchErr, arcSearchErr, tpbSearchErr, ottsSearchErr, yggSearchErr error
 
 	// Gather all goroutines results
 	for _, source := range s.sourcesToLookup {
@@ -462,6 +492,10 @@ func main() {
 				}).Error("The tpb search goroutine broke")
 			case tpbTorList := <-tpbTorListCh:
 				s.out = append(s.out, tpbTorList...)
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "tpb",
+				}).Debug("Got search results from goroutine")
 			}
 		case "otts":
 			// Get results or error from otts
@@ -479,10 +513,26 @@ func main() {
 					"sourceToSearch": "otts",
 				}).Debug("Got search results from goroutine")
 			}
+		case "ygg":
+			// Get results or error from ygg
+			select {
+			case yggSearchErr = <-yggSearchErrCh:
+				fmt.Printf("An error occured during search on %v%v", sources["ygg"], lineBreak)
+				log.WithFields(log.Fields{
+					"input": s.in,
+					"error": yggSearchErr,
+				}).Error("The ygg search goroutine broke")
+			case yggTorList := <-yggTorListCh:
+				s.out = append(s.out, yggTorList...)
+				log.WithFields(log.Fields{
+					"input":          s.in,
+					"sourceToSearch": "ygg",
+				}).Debug("Got search results from goroutine")
+			}
 		}
 	}
 	// Stop the program only if all goroutines returned an error
-	if arcSearchErr != nil && tdSearchErr != nil && tpbSearchErr != nil && ottsSearchErr != nil {
+	if arcSearchErr != nil && tdSearchErr != nil && tpbSearchErr != nil && ottsSearchErr != nil && yggSearchErr != nil {
 		fmt.Println("All searches returned an error.")
 		log.WithFields(log.Fields{
 			"input": s.in,
@@ -642,5 +692,7 @@ func main() {
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.magnet)
 		}
+	case "ygg":
+		fmt.Println("Still under construction...")
 	}
 }
