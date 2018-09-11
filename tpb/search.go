@@ -68,22 +68,23 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// torrents stores a list of torrents made up of the torrent description url,
 	// its name, its size, its seeders, and its leechers
 	var torrents []Torrent
-
 	// Results are located in a clean html <table>
 	doc.Find("#searchResult tbody tr").Each(func(i int, s *goquery.Selection) {
 		var t Torrent
+		var magnetIsOk bool
+
+		// Magnet is the href of the 4th <a> tag
+		s.Find("a").Eq(3).Each(func(i int, ss *goquery.Selection) {
+			t.Magnet, magnetIsOk = ss.Attr("href")
+		})
+		if !magnetIsOk {
+			log.Debug("Could not find a magnet for a torrent so ignoring it")
+			return
+		}
 
 		// Torrent name is the text of a tag whose class is "detLink"
 		s.Find(".detLink").Each(func(i int, ss *goquery.Selection) {
 			t.Name = ss.Text()
-		})
-
-		// Magnet is the href of the 4th <a> tag
-		s.Find("a").Eq(3).Each(func(i int, ss *goquery.Selection) {
-			magnet, ok := ss.Attr("href")
-			if ok {
-				t.Magnet = magnet
-			}
 		})
 
 		// Size and upload date are concatenated in a string in a <font> tag.
@@ -154,14 +155,17 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			}).Info("Could not build url for one of the TPB proxies")
 			continue
 		}
-		go func(url string) {
-			resp, err := core.Fetch(url, client)
+		go func(url string, localTimeout time.Duration) {
+			localClient := &http.Client{
+				Timeout: localTimeout,
+			}
+			resp, err := core.Fetch(url, localClient)
 			if err != nil {
 				httpRespErrCh <- struct{}{}
 				return
 			}
 			httpRespCh <- resp
-		}(fullURL)
+		}(fullURL, timeout)
 
 	}
 

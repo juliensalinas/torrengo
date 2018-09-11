@@ -1,5 +1,5 @@
-// TODO: set a timeout per search goroutine
-// TODO: write tests and use dependency injection (https://medium.com/@zach_4342/dependency-injection-in-golang-e587c69478a8)
+// TODO: fix tpb magnet link that looks like file path
+// TODO: rewrite the ok parsers
 package main
 
 import (

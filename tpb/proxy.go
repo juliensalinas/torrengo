@@ -7,6 +7,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
+	log "github.com/sirupsen/logrus"
 )
 
 // parseProxiesPage retrieves all the tpb urls from the html page
@@ -22,15 +23,17 @@ func parseProxiesPage(r io.Reader) ([]string, error) {
 	// Results are located in a clean html <table>
 	doc.Find("#proxyList tbody tr").Each(func(i int, s *goquery.Selection) {
 		var url string
+		var urlIsOk bool
 
 		// TPB site url is the href of a tag whose class is "site"
 		s.Find(".site a ").Each(func(i int, ss *goquery.Selection) {
-			u, ok := ss.Attr("href")
-			if ok {
-				url = u
-				urls = append(urls, url)
-			}
+			url, urlIsOk = ss.Attr("href")
 		})
+		if urlIsOk {
+			urls = append(urls, url)
+		} else {
+			log.Debug("could not find a url for a proxy")
+		}
 	})
 
 	return urls, nil
