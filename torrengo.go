@@ -141,7 +141,7 @@ func getTorrentFile(userID, userPass string) {
 		log.WithFields(log.Fields{
 			"sourceToSearch": "td",
 		}).Debug("Download torrent file")
-		ft.filePath, err = td.DlFile(ft.fileURL)
+		ft.filePath, err = td.DlFileFromCloudflare(ft.fileURL)
 	case "ygg":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "ygg",

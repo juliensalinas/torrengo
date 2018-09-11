@@ -12,4 +12,4 @@ The **Lookup** function searches torrentdownloads.me and returns a clean list of
 
 The **ExtractTorAndMag** function opens a torrent description page and retrieves the torrent file url + the torrent magnet link.
 
-The **DlFile** downloads a torrent file.
+The **DlFileFromCloudflare** function downloads a torrent file by trying to bypass the Cloudflare protection.

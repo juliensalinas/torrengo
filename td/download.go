@@ -38,10 +38,10 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 	return fileURL, magnet, nil
 }
 
-// DlFile downloads the torrent file.
+// DlFileFromCloudflare downloads the torrent file.
 // The file is protected by Cloudflare so need to use a dedicated lib to bypass
 // it. Does not work 100% of the time...
-func DlFile(fileURL string) (string, error) {
+func DlFileFromCloudflare(fileURL string) (string, error) {
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
 	fileName := s[len(s)-1]

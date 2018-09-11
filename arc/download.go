@@ -3,9 +3,6 @@ package arc
 import (
 	"fmt"
 	"io"
-	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -41,51 +38,6 @@ func parseDescPage(r io.Reader) (string, error) {
 	return fileURL, nil
 }
 
-// dlFile downloads the torrent file
-func dlFile(fileURL string) (string, error) {
-	// Get torrent file name from url
-	s := strings.Split(fileURL, "/")
-	fileName := s[len(s)-1]
-
-	// Create local torrent file
-	out, err := os.Create(fileName)
-	if err != nil {
-		return "", fmt.Errorf("could not create the torrent file named %s: %v", fileName, err)
-	}
-	defer out.Close()
-
-	// Download torrent
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", fileURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("could not create request: %v", err)
-	}
-	req.Header.Set("User-Agent", core.UserAgent)
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("could not download the torrent file: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return "", fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
-	}
-
-	// Save torrent to disk
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("could not save the torrent file to disk: %v", err)
-	}
-
-	// Get absolute file path of torrent
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		return "", fmt.Errorf("could not retrieve current directory of saved filed: %v", err)
-	}
-	filePath := dir + "/" + fileName
-
-	return filePath, nil
-}
-
 // FindAndDlFile opens the torrent description page and downloads the torrent
 // file. Returns the local path of downloaded torrent file.
 func FindAndDlFile(descURL string) (string, error) {
@@ -103,7 +55,7 @@ func FindAndDlFile(descURL string) (string, error) {
 	}
 
 	// Download torrent
-	filePath, err := dlFile(fileURL)
+	filePath, err := core.DlFile(fileURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}
