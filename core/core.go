@@ -11,8 +11,10 @@ const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/5
 // Fetch opens a url and returns the resulting html page.
 // Cannot use the straight http.Get function because need to
 // modify headers in order to set a fake user-agent.
-func Fetch(url string) (*http.Response, error) {
-	client := &http.Client{}
+func Fetch(url string, client *http.Client) (*http.Response, error) {
+	if client == nil {
+		client = &http.Client{}
+	}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create request: %v", err)
@@ -25,7 +27,7 @@ func Fetch(url string) (*http.Response, error) {
 		return nil, fmt.Errorf("could not launch request: %v", err)
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
 		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
 	}

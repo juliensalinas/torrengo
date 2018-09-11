@@ -35,7 +35,6 @@ var sources = map[string]string{
 	"otts": "1337x",
 	"ygg":  "Ygg Torrent",
 }
-
 var isVerbose bool
 
 // ft is the final torrent the user wants to download
@@ -130,7 +129,7 @@ func render(torrents []torrent) {
 }
 
 // getTorrentFile retrieves and displays torrent file to user
-func getTorrentFile() {
+func getTorrentFile(userID, userPass string) {
 	var err error
 	switch ft.source {
 	case "arc":
@@ -143,6 +142,11 @@ func getTorrentFile() {
 			"sourceToSearch": "td",
 		}).Debug("Download torrent file")
 		ft.filePath, err = td.DlFile(ft.fileURL)
+	case "ygg":
+		log.WithFields(log.Fields{
+			"sourceToSearch": "ygg",
+		}).Debug("Download torrent file")
+		ft.filePath, err = ygg.FindAndDlFile(ft.descURL, userID, userPass)
 	}
 	if err != nil {
 		fmt.Println("Could not retrieve the torrent file (see logs for more details).")
@@ -259,7 +263,7 @@ func main() {
 	cleanedUsrSourcesSlc := rmDuplicates(usrSourcesSlc)
 	for _, usrSource := range cleanedUsrSourcesSlc {
 		if usrSource == "all" {
-			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb", "otts"}
+			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb", "otts", "ygg"}
 			break
 		}
 		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" && usrSource != "otts" && usrSource != "ygg" {
@@ -597,7 +601,7 @@ func main() {
 	// Download torrent and optionnaly open in torrent client
 	switch ft.source {
 	case "arc":
-		getTorrentFile()
+		getTorrentFile("", "")
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath)
@@ -628,7 +632,7 @@ func main() {
 			log.WithFields(log.Fields{
 				"magnetLink": ft.magnet,
 			}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
-			getTorrentFile()
+			getTorrentFile("", "")
 			fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 			if launchClient == "y" {
 				openMagOrTorInClient(ft.filePath)
@@ -663,7 +667,7 @@ func main() {
 					openMagOrTorInClient(ft.magnet)
 				}
 			case 2:
-				getTorrentFile()
+				getTorrentFile("", "")
 				fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 				if launchClient == "y" {
 					openMagOrTorInClient(ft.filePath)
@@ -693,6 +697,35 @@ func main() {
 			openMagOrTorInClient(ft.magnet)
 		}
 	case "ygg":
-		fmt.Println("Still under construction...")
+		var userID string
+		var userPass string
+
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Println("You need an Ygg Torrent account to download the file.")
+		fmt.Println("Please enter your user ID: ")
+		for {
+			rawUserID, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("Could not read your input, please try again:")
+				continue
+			}
+			userID = strings.TrimSpace(strings.TrimSuffix(rawUserID, lineBreak))
+			break
+		}
+		fmt.Println("Please enter your user Pass: ")
+		for {
+			rawUserPass, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("Could not read your input, please try again:")
+				continue
+			}
+			userPass = strings.TrimSpace(strings.TrimSuffix(rawUserPass, lineBreak))
+			break
+		}
+		getTorrentFile(userID, userPass)
+		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
+		if launchClient == "y" {
+			openMagOrTorInClient(ft.filePath)
+		}
 	}
 }

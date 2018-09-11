@@ -1,4 +1,4 @@
-package arc
+package ygg
 
 import (
 	"fmt"
@@ -12,29 +12,20 @@ import (
 	"github.com/juliensalinas/torrengo/core"
 )
 
-// parseDescPage parses the torrent description page and extracts the torrent file url
 func parseDescPage(r io.Reader) (string, error) {
-	// Load html response into GoQuery
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
 	var fileURL string
+	var fileURLIsOk bool
 
-	doc.Find(".format-summary ").Each(func(i int, s *goquery.Selection) {
-		// Get the torrent file path from a "<a href=...>"" whose class starts with
-		// "format-summary" and whose text contains the word "TORRENT"
-		fileType := s.Text()
-		if strings.Contains(fileType, "TORRENT") {
-			path, ok := s.Attr("href")
-			if ok {
-				fileURL = baseURL + path
-				return
-			}
-		}
+	doc.Find(".infos-torrent tbody").Eq(1).Find("tr td").Eq(1).Find("a").Eq(0).Each(func(i int, s *goquery.Selection) {
+		fmt.Println(i)
+		fileURL, fileURLIsOk = s.Attr("href")
 	})
-	if fileURL == "" {
+	if !fileURLIsOk {
 		return "", fmt.Errorf("could not find a torrent file on the description page")
 	}
 
@@ -86,11 +77,18 @@ func dlFile(fileURL string) (string, error) {
 	return filePath, nil
 }
 
-// FindAndDlFile opens the torrent description page and downloads the torrent
-// file. Returns the local path of downloaded torrent file.
-func FindAndDlFile(descURL string) (string, error) {
+// FindAndDlFile authenticates user, opens the torrent description page,
+// and and downloads the torrent file.
+// Returns the local path of downloaded torrent file.
+func FindAndDlFile(descURL string, userID string, userPass string) (string, error) {
+	// Authenticate user
+	httpClient, err := authUser(userID, userPass)
+	if err != nil {
+		return "", fmt.Errorf("error while authenticating: %v", err)
+	}
+
 	// Fetch url
-	resp, err := core.Fetch(descURL, nil)
+	resp, err := core.Fetch(descURL, httpClient)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
@@ -102,11 +100,15 @@ func FindAndDlFile(descURL string) (string, error) {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
 
-	// Download torrent
-	filePath, err := dlFile(fileURL)
-	if err != nil {
-		return "", fmt.Errorf("error while downloading torrent file: %v", err)
-	}
+	fmt.Println(fileURL)
 
-	return filePath, nil
+	return fileURL, nil
+
+	// Download torrent
+	// filePath, err := dlFile(fileURL)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error while downloading torrent file: %v", err)
+	// }
+
+	// return filePath, nil
 }

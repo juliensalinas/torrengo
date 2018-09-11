@@ -37,7 +37,7 @@ func parseProxiesPage(r io.Reader) ([]string, error) {
 
 // getProxies returns a list of all tpb urls
 func getProxies() ([]string, error) {
-	resp, err := core.Fetch(proxiesListURL)
+	resp, err := core.Fetch(proxiesListURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

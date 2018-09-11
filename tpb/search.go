@@ -150,7 +150,7 @@ func Lookup(in string) ([]Torrent, error) {
 			continue
 		}
 		go func(url string) {
-			resp, err := core.Fetch(url)
+			resp, err := core.Fetch(url, nil)
 			if err != nil {
 				httpRespErrCh <- struct{}{}
 				return

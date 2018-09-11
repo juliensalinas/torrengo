@@ -89,7 +89,7 @@ func DlFile(fileURL string) (string, error) {
 // ExtractTorAndMag opens the torrent description page and extracts the torrent
 // file url + the magnet link
 func ExtractTorAndMag(descURL string) (fileURL string, magnet string, err error) {
-	resp, err := core.Fetch(descURL)
+	resp, err := core.Fetch(descURL, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("error while fetching url: %v", err)
 	}

@@ -127,7 +127,7 @@ func Lookup(in string) ([]Torrent, error) {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
 
-	resp, err := core.Fetch(url)
+	resp, err := core.Fetch(url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

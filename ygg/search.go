@@ -31,14 +31,17 @@ import (
 	"github.com/juliensalinas/torrengo/core"
 
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/sirupsen/logrus"
 )
+
+const baseURL = "www.yggtorrent.is"
 
 // searchURL is the url used to retrieve a list of torrents based on user keywords.
 // A typical final url looks like:
 // https://www.yggtorrent.is/engine/search?name=alexandre+dumas&do=search
 var searchURL = url.URL{
 	Scheme: "https",
-	Host:   "www.yggtorrent.is",
+	Host:   baseURL,
 	Path:   "engine/search",
 }
 
@@ -72,17 +75,22 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// Results are located in a clean html <table> whose class is table
 	doc.Find(".table tbody tr").Each(func(i int, s *goquery.Selection) {
 		var t Torrent
+		var descURLIsOk bool
 
 		// Torrent name is the text of the 2th <td> tag and descURL is its href
-		s.Find("td").Eq(1).Each(func(i int, ss *goquery.Selection) {
-			t.Name = ss.Text()
-			path, ok := ss.Attr("href")
-			if ok {
-				t.DescURL = path
+		s.Find("td a").Eq(1).Each(func(i int, ss *goquery.Selection) {
+			t.DescURL, descURLIsOk = ss.Attr("href")
+			if !descURLIsOk {
+				return
 			}
+			t.Name = ss.Text()
 		})
+		if !descURLIsOk {
+			log.Debug("Could not find description URL for a torrent so ignoring it")
+			return
+		}
 
-		// Upload date is the text of the div whose class is hiddent in the 3rd <td> tag.
+		// Upload date is the text of the div whose class is hidden in the 3rd <td> tag.
 		// A proper timestamp is retrieved. We convert it to datetime.
 		s.Find("td").Eq(4).Each(func(i int, ss *goquery.Selection) {
 			timestampStr := ss.Find(".hidden").Text()
@@ -131,7 +139,7 @@ func Lookup(in string) ([]Torrent, error) {
 	searchParams.Add("name", in)
 	searchURL.RawQuery = searchParams.Encode()
 
-	resp, err := core.Fetch(searchURL.String())
+	resp, err := core.Fetch(searchURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
