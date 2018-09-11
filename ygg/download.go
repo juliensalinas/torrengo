@@ -33,7 +33,11 @@ func parseDescPage(r io.Reader) (string, error) {
 }
 
 // dlFile downloads the torrent file
-func dlFile(fileURL string) (string, error) {
+func dlFile(fileURL string, client *http.Client) (string, error) {
+	if client == nil {
+		client = &http.Client{}
+	}
+
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
 	fileName := s[len(s)-1]
@@ -46,7 +50,6 @@ func dlFile(fileURL string) (string, error) {
 	defer out.Close()
 
 	// Download torrent
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", fileURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not create request: %v", err)
@@ -100,15 +103,11 @@ func FindAndDlFile(descURL string, userID string, userPass string) (string, erro
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
 
-	fmt.Println(fileURL)
-
-	return fileURL, nil
-
 	// Download torrent
-	// filePath, err := dlFile(fileURL)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error while downloading torrent file: %v", err)
-	// }
+	filePath, err := dlFile(fileURL, httpClient)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading torrent file: %v", err)
+	}
 
-	// return filePath, nil
+	return filePath, nil
 }
