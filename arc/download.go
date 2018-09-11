@@ -3,7 +3,9 @@ package arc
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -39,10 +41,17 @@ func parseDescPage(r io.Reader) (string, error) {
 }
 
 // FindAndDlFile opens the torrent description page and downloads the torrent
-// file. Returns the local path of downloaded torrent file.
-func FindAndDlFile(descURL string) (string, error) {
+// file.
+// A user timeout is set.
+// Returns the local path of downloaded torrent file.
+func FindAndDlFile(descURL string, timeout time.Duration) (string, error) {
+	// Create an http client with user timeout
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
 	// Fetch url
-	resp, err := core.Fetch(descURL, nil)
+	resp, err := core.Fetch(descURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
@@ -55,7 +64,7 @@ func FindAndDlFile(descURL string) (string, error) {
 	}
 
 	// Download torrent
-	filePath, err := core.DlFile(fileURL, nil)
+	filePath, err := core.DlFile(fileURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}

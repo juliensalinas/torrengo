@@ -3,6 +3,7 @@ package tpb
 import (
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -36,8 +37,8 @@ func parseProxiesPage(r io.Reader) ([]string, error) {
 }
 
 // getProxies returns a list of all tpb urls
-func getProxies() ([]string, error) {
-	resp, err := core.Fetch(proxiesListURL, nil)
+func getProxies(client *http.Client) ([]string, error) {
+	resp, err := core.Fetch(proxiesListURL, client)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

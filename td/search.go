@@ -29,9 +29,11 @@ package td
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -130,15 +132,19 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	return torrents, nil
 }
 
-// Lookup takes a user search as a parameter and
-// returns clean torrent information fetched from torrentdownloads.me
-func Lookup(in string) ([]Torrent, error) {
+// Lookup takes a user search as a parameter, launches the http request
+// with a custom timout, and returns clean torrent information fetched from torrentdownloads.me
+func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
 	url, err := buildSearchURL(in)
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
 
-	resp, err := core.Fetch(url, nil)
+	resp, err := core.Fetch(url, client)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

@@ -16,7 +16,6 @@
 // - UplDate: the date of upload
 // - Leechers: the number of leechers (set to -1 if cannot be converted to integer)
 // - Seechers: the number of seechers (set to -1 if cannot be converted to integer)
-
 package tpb
 
 import (
@@ -26,6 +25,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -126,9 +126,14 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // It first looks for the ThePirateBay proxies and then
 // concurrently fetches all of them and retrieve results from
 // the quickest one.
-func Lookup(in string) ([]Torrent, error) {
+// A custom user timeout is set.
+func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
 	// Retrieve tpb proxies urls
-	proxiesList, err := getProxies()
+	proxiesList, err := getProxies(client)
 	if err != nil {
 		return nil, fmt.Errorf("error while retrieving proxies: %v", err)
 	}
@@ -150,7 +155,7 @@ func Lookup(in string) ([]Torrent, error) {
 			continue
 		}
 		go func(url string) {
-			resp, err := core.Fetch(url, nil)
+			resp, err := core.Fetch(url, client)
 			if err != nil {
 				httpRespErrCh <- struct{}{}
 				return

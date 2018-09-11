@@ -18,8 +18,10 @@ package arc
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -97,9 +99,13 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	return torrents, nil
 }
 
-// Lookup takes a user search as a parameter and
-// returns clean torrent information fetched from archive.org
-func Lookup(in string) ([]Torrent, error) {
+// Lookup takes a user search as a parameter, launches the http request
+// with a custom timout, and returns clean torrent information fetched from archive.org
+func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
+	// Create an http client with user timeout
+	client := &http.Client{
+		Timeout: timeout,
+	}
 
 	// Build url
 	url, err := buildSearchURL(in)
@@ -108,7 +114,7 @@ func Lookup(in string) ([]Torrent, error) {
 	}
 
 	// Fetch url
-	resp, err := core.Fetch(url, nil)
+	resp, err := core.Fetch(url, client)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

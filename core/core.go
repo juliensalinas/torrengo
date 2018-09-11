@@ -12,13 +12,10 @@ import (
 // UserAgent is a customer browser user agent used in every HTTP connections
 const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
 
-// Fetch opens a url and returns the resulting html page.
+// Fetch opens a url with a custom client created by user and returns the resulting html page.
 // Cannot use the straight http.Get function because need to
 // modify headers in order to set a fake user-agent.
 func Fetch(url string, client *http.Client) (*http.Response, error) {
-	if client == nil {
-		client = &http.Client{}
-	}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create request: %v", err)
@@ -39,13 +36,9 @@ func Fetch(url string, client *http.Client) (*http.Response, error) {
 	return resp, nil
 }
 
-// DlFile downloads the torrent file and returns the path of
+// DlFile downloads the torrent with a custom client created by user and returns the path of
 // downloaded file.
 func DlFile(fileURL string, client *http.Client) (string, error) {
-	if client == nil {
-		client = &http.Client{}
-	}
-
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
 	fileName := s[len(s)-1]

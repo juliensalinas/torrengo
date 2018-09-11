@@ -3,6 +3,7 @@ package ygg
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -17,8 +18,8 @@ func parseDescPage(r io.Reader) (string, error) {
 	var fileURL string
 	var fileURLIsOk bool
 
+	// file url is located in the 1st <a> of the 2nd <td> of the second <tbody> of class infos-torrents
 	doc.Find(".infos-torrent tbody").Eq(1).Find("tr td").Eq(1).Find("a").Eq(0).Each(func(i int, s *goquery.Selection) {
-		fmt.Println(i)
 		fileURL, fileURLIsOk = s.Attr("href")
 	})
 	if !fileURLIsOk {
@@ -31,9 +32,10 @@ func parseDescPage(r io.Reader) (string, error) {
 // FindAndDlFile authenticates user, opens the torrent description page,
 // and and downloads the torrent file.
 // Returns the local path of downloaded torrent file.
-func FindAndDlFile(descURL string, userID string, userPass string) (string, error) {
-	// Authenticate user
-	httpClient, err := authUser(userID, userPass)
+// A user timeout is set.
+func FindAndDlFile(descURL string, userID string, userPass string, timeout time.Duration) (string, error) {
+	// Authenticate user and create http client that handles cookie and timeout
+	httpClient, err := authUser(userID, userPass, timeout)
 	if err != nil {
 		return "", fmt.Errorf("error while authenticating: %v", err)
 	}

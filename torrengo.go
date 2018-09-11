@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/onrik/logrus/filename"
 	log "github.com/sirupsen/logrus"
@@ -129,24 +130,24 @@ func render(torrents []torrent) {
 }
 
 // getTorrentFile retrieves and displays torrent file to user
-func getTorrentFile(userID, userPass string) {
+func getTorrentFile(userID, userPass string, timeout time.Duration) {
 	var err error
 	switch ft.source {
 	case "arc":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "arc",
 		}).Debug("Download torrent file")
-		ft.filePath, err = arc.FindAndDlFile(ft.descURL)
+		ft.filePath, err = arc.FindAndDlFile(ft.descURL, timeout)
 	case "td":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "td",
 		}).Debug("Download torrent file")
-		ft.filePath, err = td.DlFileFromCloudflare(ft.fileURL)
+		ft.filePath, err = td.DlFileFromCloudflare(ft.fileURL, timeout)
 	case "ygg":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "ygg",
 		}).Debug("Download torrent file")
-		ft.filePath, err = ygg.FindAndDlFile(ft.descURL, userID, userPass)
+		ft.filePath, err = ygg.FindAndDlFile(ft.descURL, userID, userPass, timeout)
 	}
 	if err != nil {
 		fmt.Println("Could not retrieve the torrent file (see logs for more details).")
@@ -231,7 +232,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(
 			flag.CommandLine.Output(),
-			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
+			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-t timeout] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
 				"Examples:%[2]s%[2]s\tSearch 'Alexandre Dumas' on all sources:%[2]s\t\t%[1]s Alexandre Dumas%[2]s"+
 				"\tSearch 'Alexandre Dumas' on Archive.org and ThePirateBay only:%[2]s\t\t%[1]s -s arc,tpb Alexandre Dumas%[2]s%[2]s"+
 				"Options:%[2]s%[2]s",
@@ -241,8 +242,13 @@ func main() {
 	}
 	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
 		"you want to search."+lineBreak+"Choices: arc (Archive.org) | td (TorrentDownloads) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
+	timeoutInMillisecPtr := flag.Int("t", 5000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
 	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
+
+	// Get timeout and convert it to a proper Go timeout in nanoseconds
+	timeoutInMillisec := *timeoutInMillisecPtr
+	timeout := time.Duration(timeoutInMillisec * 1000 * 1000)
 
 	// Set logging parameters depending on the verbose user input
 	isVerbose = *isVerbosePtr
@@ -316,7 +322,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "arc",
 				}).Debug("Start search goroutine")
-				arcTorrents, err := arc.Lookup(s.in)
+				arcTorrents, err := arc.Lookup(s.in, timeout)
 				if err != nil {
 					arcSearchErrCh <- err
 					return
@@ -343,7 +349,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "td",
 				}).Debug("Start search goroutine")
-				tdTorrents, err := td.Lookup(s.in)
+				tdTorrents, err := td.Lookup(s.in, timeout)
 				if err != nil {
 					tdSearchErrCh <- err
 					return
@@ -370,7 +376,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "tpb",
 				}).Debug("Start search goroutine")
-				tpbTorrents, err := tpb.Lookup(s.in)
+				tpbTorrents, err := tpb.Lookup(s.in, timeout)
 				if err != nil {
 					tpbSearchErrCh <- err
 					return
@@ -397,7 +403,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "otts",
 				}).Debug("Start search goroutine")
-				ottsTorrents, err := otts.Lookup(s.in)
+				ottsTorrents, err := otts.Lookup(s.in, timeout)
 				if err != nil {
 					ottsSearchErrCh <- err
 					return
@@ -424,7 +430,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "ygg",
 				}).Debug("Start search goroutine")
-				yggTorrents, err := ygg.Lookup(s.in)
+				yggTorrents, err := ygg.Lookup(s.in, timeout)
 				if err != nil {
 					yggSearchErrCh <- err
 					return
@@ -601,7 +607,7 @@ func main() {
 	// Download torrent and optionnaly open in torrent client
 	switch ft.source {
 	case "arc":
-		getTorrentFile("", "")
+		getTorrentFile("", "", timeout)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath)
@@ -610,7 +616,7 @@ func main() {
 		log.WithFields(log.Fields{
 			"sourceToSearch": "td",
 		}).Debug("Extract magnet and torrent file url")
-		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL)
+		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL, timeout)
 		if err != nil {
 			fmt.Println("An error occured while retrieving magnet and torrent file.")
 			log.WithFields(log.Fields{
@@ -632,7 +638,7 @@ func main() {
 			log.WithFields(log.Fields{
 				"magnetLink": ft.magnet,
 			}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
-			getTorrentFile("", "")
+			getTorrentFile("", "", timeout)
 			fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 			if launchClient == "y" {
 				openMagOrTorInClient(ft.filePath)
@@ -667,7 +673,7 @@ func main() {
 					openMagOrTorInClient(ft.magnet)
 				}
 			case 2:
-				getTorrentFile("", "")
+				getTorrentFile("", "", timeout)
 				fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 				if launchClient == "y" {
 					openMagOrTorInClient(ft.filePath)
@@ -683,7 +689,7 @@ func main() {
 		log.WithFields(log.Fields{
 			"sourceToSearch": "otts",
 		}).Debug("Extract magnet")
-		ft.magnet, err = otts.ExtractMag(ft.descURL)
+		ft.magnet, err = otts.ExtractMag(ft.descURL, timeout)
 		if err != nil {
 			fmt.Println("An error occured while retrieving magnet.")
 			log.WithFields(log.Fields{
@@ -722,7 +728,7 @@ func main() {
 			userPass = strings.TrimSpace(strings.TrimSuffix(rawUserPass, lineBreak))
 			break
 		}
-		getTorrentFile(userID, userPass)
+		getTorrentFile(userID, userPass, timeout)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath)

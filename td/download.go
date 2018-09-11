@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
@@ -41,7 +42,7 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 // DlFileFromCloudflare downloads the torrent file.
 // The file is protected by Cloudflare so need to use a dedicated lib to bypass
 // it. Does not work 100% of the time...
-func DlFileFromCloudflare(fileURL string) (string, error) {
+func DlFileFromCloudflare(fileURL string, timeout time.Duration) (string, error) {
 	// Get torrent file name from url
 	s := strings.Split(fileURL, "/")
 	fileName := s[len(s)-1]
@@ -61,7 +62,10 @@ func DlFileFromCloudflare(fileURL string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not initialize Cloudflare scraper: %v", err)
 	}
-	client := http.Client{Transport: cfScraper}
+	client := http.Client{
+		Transport: cfScraper,
+		Timeout:   timeout,
+	}
 
 	// Download torrent
 	resp, err := client.Get(fileURL)
@@ -87,9 +91,14 @@ func DlFileFromCloudflare(fileURL string) (string, error) {
 }
 
 // ExtractTorAndMag opens the torrent description page and extracts the torrent
-// file url + the magnet link
-func ExtractTorAndMag(descURL string) (fileURL string, magnet string, err error) {
-	resp, err := core.Fetch(descURL, nil)
+// file url + the magnet link.
+// A user timeout is set.
+func ExtractTorAndMag(descURL string, timeout time.Duration) (fileURL string, magnet string, err error) {
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	resp, err := core.Fetch(descURL, client)
 	if err != nil {
 		return "", "", fmt.Errorf("error while fetching url: %v", err)
 	}

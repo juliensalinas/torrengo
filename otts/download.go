@@ -3,6 +3,8 @@ package otts
 import (
 	"fmt"
 	"io"
+	"net/http"
+	"time"
 
 	"github.com/juliensalinas/torrengo/core"
 
@@ -29,9 +31,14 @@ func parseDescPage(r io.Reader) (string, error) {
 	return magnet, nil
 }
 
-// ExtractMag opens the torrent description page and extracts the magnet link
-func ExtractMag(descURL string) (string, error) {
-	resp, err := core.Fetch(descURL, nil)
+// ExtractMag opens the torrent description page and extracts the magnet link.
+// A user timeout is set.
+func ExtractMag(descURL string, timeout time.Duration) (string, error) {
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	resp, err := core.Fetch(descURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
