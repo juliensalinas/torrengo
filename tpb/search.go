@@ -19,8 +19,10 @@
 package tpb
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -68,47 +70,53 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// torrents stores a list of torrents made up of the torrent description url,
 	// its name, its size, its seeders, and its leechers
 	var torrents []Torrent
+
+	// Get the total number of items found
+	l := doc.Find("#searchResult tbody tr").Size()
+
 	// Results are located in a clean html <table>
-	fmt.Println("before")
 	doc.Find("#searchResult tbody tr").Each(func(i int, s *goquery.Selection) {
-		var t Torrent
-		fmt.Println("in")
-		// Magnet is the href of the 4th <a> tag
-		magnet, ok := s.Find("a").Eq(3).First().Attr("href")
-		if !ok {
-			log.Debug("Could not find a magnet for a torrent so ignoring it")
-			return
+		// Last line of the table is not relevant
+		if i < l-1 {
+			var t Torrent
+			// Magnet is the href of the 4th <a> tag
+			magnet, ok := s.Find("a").Eq(3).First().Attr("href")
+			if !ok {
+				log.Debug("Could not find a magnet for a torrent so ignoring it")
+				return
+			}
+			t.Magnet = magnet
+
+			// Torrent name is the text of a tag whose class is "detLink"
+			t.Name = s.Find(".detLink").First().Text()
+
+			// Size and upload date are concatenated in a string in a <font> tag.
+			// Each piece of info is comma separated.
+			// We then remove spaces and unneeded text.
+			text := s.Find("font").First().Text()
+			textSlc := strings.Split(text, ",")
+			if len(textSlc) > 1 { // A security just in case
+				t.UplDate = strings.TrimSpace(strings.Replace(textSlc[0], "Uploaded", "", -1))
+				t.Size = strings.TrimSpace(strings.Replace(textSlc[1], "Size", "", -1))
+			}
+			// Seeders and leechers are located in the 3rd and 4th <td>.
+			// We convert it to integers and if conversion fails we convert it to -1.
+			seedersStr := s.Find("td").Eq(2).First().Text()
+			seeders, err := strconv.Atoi(seedersStr)
+			if err != nil {
+				seeders = -1
+			}
+			t.Seeders = seeders
+
+			leechersStr := s.Find("td").Eq(3).First().Text()
+			leechers, err := strconv.Atoi(leechersStr)
+			if err != nil {
+				leechers = -1
+			}
+			t.Leechers = leechers
+
+			torrents = append(torrents, t)
 		}
-		t.Magnet = magnet
-
-		// Torrent name is the text of a tag whose class is "detLink"
-		t.Name = s.Find(".detLink").First().Text()
-
-		// Size and upload date are concatenated in a string in a <font> tag.
-		// Each piece of info is comma separated.
-		// We then remove spaces and unneeded text.
-		text := s.Find("font").First().Text()
-		textSlc := strings.Split(text, ",")
-		t.UplDate = strings.TrimSpace(strings.Replace(textSlc[0], "Uploaded", "", -1))
-		t.Size = strings.TrimSpace(strings.Replace(textSlc[1], "Size", "", -1))
-
-		// Seeders and leechers are located in the 3rd and 4th <td>.
-		// We convert it to integers and if conversion fails we convert it to -1.
-		seedersStr := s.Find("td").Eq(2).First().Text()
-		seeders, err := strconv.Atoi(seedersStr)
-		if err != nil {
-			seeders = -1
-		}
-		t.Seeders = seeders
-
-		leechersStr := s.Find("td").Eq(3).First().Text()
-		leechers, err := strconv.Atoi(leechersStr)
-		if err != nil {
-			leechers = -1
-		}
-		t.Leechers = leechers
-
-		torrents = append(torrents, t)
 	})
 
 	return torrents, nil
@@ -174,6 +182,14 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 				httpRespErrCh <- struct{}{}
 				return
 			}
+			// A resp.Body cannot be read twice, so need to first extract
+			// extract bodyBytes and use ioutil.NopCloser on it each time we
+			// want to read the body.
+			// Could be optimized because here we read the body 3 times instead
+			// of 2 (should retrieve bodyBytes whithin checkEmptyResp when it
+			// is read for the first time).
+			bodyBytes, _ := ioutil.ReadAll(resp.Body)
+			resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 			ok := checkEmptyResp(resp.Body)
 			if !ok {
 				log.WithFields(log.Fields{
@@ -185,6 +201,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			log.WithFields(log.Fields{
 				"url": url,
 			}).Debug("Found a working proxy")
+			resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 			httpRespCh <- resp
 		}(fullURL, timeout)
 

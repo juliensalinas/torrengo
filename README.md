@@ -9,7 +9,7 @@ Torrengo is a CLI (command line) program written in Go which concurrently search
 Nice supported features:
 
 * the user decides which sources he wants to search (all sources are searched by default) and the search is done **concurrently**
-* given that The Pirate Bay urls are changing quite often, this program concurrently launches a search on all The Pirate Bay urls found on <https://proxybay.bz> and retrieves torrents from the fastest response
+* given that The Pirate Bay urls are changing quite often, this program concurrently launches a search on all The Pirate Bay urls found on <https://proxybay.bz> and retrieves torrents from the fastest response (the returned url is also checked in-depth because some proxies sometimes return a page with no error but the page actually does not have any result)
 * torrent file download on <http://torrentdownloads.me> is protected by Cloudflare, so this program tries to bypass the protection by answering Cloudflare's Javascript challenges
 * <http://www.yggtorrent.is> can be searched freely, but an account is needed to download the torrent file, so the program authenticates the user before downloading the torrent file
 
