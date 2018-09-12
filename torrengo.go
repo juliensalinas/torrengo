@@ -1,5 +1,3 @@
-// TODO: fix tpb magnet link that looks like file path
-// TODO: rewrite the ok parsers
 package main
 
 import (
@@ -12,17 +10,19 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/onrik/logrus/filename"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/juliensalinas/torrengo/arc"
 	"github.com/juliensalinas/torrengo/otts"
 	"github.com/juliensalinas/torrengo/td"
 	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/juliensalinas/torrengo/ygg"
-	"github.com/olekukonko/tablewriter"
 )
 
 // lineBreak sets the OS dependent line break (initialized in init())
@@ -36,6 +36,8 @@ var sources = map[string]string{
 	"otts": "1337x",
 	"ygg":  "Ygg Torrent",
 }
+
+// isVerbose is used to switch debugging on or off
 var isVerbose bool
 
 // ft is the final torrent the user wants to download
@@ -719,13 +721,16 @@ func main() {
 			userID = strings.TrimSpace(strings.TrimSuffix(rawUserID, lineBreak))
 			break
 		}
-		fmt.Println("Please enter your user Pass: ")
+		fmt.Println("Please enter your user pass: ")
 		for {
-			rawUserPass, err := reader.ReadString('\n')
+			// Using a special lib for password hiding during input
+			rawUserPassBytes, err := terminal.ReadPassword(int(syscall.Stdin))
 			if err != nil {
 				fmt.Println("Could not read your input, please try again:")
 				continue
 			}
+			rawUserPass := string(rawUserPassBytes)
+			fmt.Println()
 			userPass = strings.TrimSpace(strings.TrimSuffix(rawUserPass, lineBreak))
 			break
 		}
