@@ -20,20 +20,22 @@ func parseDescPage(r io.Reader) (string, error) {
 	}
 
 	var fileURL string
+	var path string
+	var pathIsOk bool
 
 	doc.Find(".format-summary ").Each(func(i int, s *goquery.Selection) {
 		// Get the torrent file path from a "<a href=...>"" whose class starts with
 		// "format-summary" and whose text contains the word "TORRENT"
 		fileType := s.Text()
 		if strings.Contains(fileType, "TORRENT") {
-			path, ok := s.Attr("href")
-			if ok {
-				fileURL = baseURL + path
+			path, pathIsOk = s.Attr("href")
+			if !pathIsOk {
 				return
 			}
+			fileURL = baseURL + path
 		}
 	})
-	if fileURL == "" {
+	if !pathIsOk {
 		return "", fmt.Errorf("could not find a torrent file on the description page")
 	}
 

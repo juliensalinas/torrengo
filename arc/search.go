@@ -25,6 +25,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
+	log "github.com/sirupsen/logrus"
 )
 
 const baseURL string = "https://archive.org"
@@ -76,24 +77,35 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// and its name
 	var torrents []Torrent
 
-	doc.Find(".results ").Children().Each(func(i int, s *goquery.Selection) {
+	doc.Find(".item-ttl.C.C2").Each(func(i int, s *goquery.Selection) {
 		// Get path to torrent description page from a "<a>" tag located inside a
 		// "class=C234"
-		path, ok := s.Find(".C234 a").Attr("href")
-		// If no description url found, stop here
-		if ok {
+		var t Torrent
+		var path string
+		var pathIsOk bool
+
+		s.Find("a").Eq(0).Each(func(i int, ss *goquery.Selection) {
+			path, pathIsOk = ss.Attr("href")
+			// If no description url found, stop here
+			if !pathIsOk {
+				return
+			}
+			// Build the real url
+			t.DescURL = baseURL + path
+		})
+		if !pathIsOk {
+			log.Debug("Could not find a description page for a torrent so ignoring it")
+			return
+		}
+
+		s.Find(".ttl").Each(func(i int, ss *goquery.Selection) {
 			// Get name from a "class=ttl" tag.
 			// Remove dirty spaces before and after title.
-			name := strings.TrimSpace(s.Find(".ttl").Text())
-			// Build the real url
-			url := baseURL + path
-			// Store results
-			t := Torrent{
-				DescURL: url,
-				Name:    name,
-			}
-			torrents = append(torrents, t)
-		}
+			t.Name = strings.TrimSpace(ss.Text())
+		})
+
+		torrents = append(torrents, t)
+
 	})
 
 	return torrents, nil

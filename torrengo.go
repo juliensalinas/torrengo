@@ -586,7 +586,8 @@ func main() {
 	// Final torrent we're working on as of now
 	ft = s.out[index]
 	log.WithFields(log.Fields{
-		"finalTorrent": ft,
+		"descURL":       ft.descURL,
+		"torrentSource": ft.source,
 	}).Debug("Got the final torrent to work on")
 
 	// Read from user input whether he wants to open torrent in client or not

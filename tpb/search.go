@@ -76,6 +76,8 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 		// Magnet is the href of the 4th <a> tag
 		s.Find("a").Eq(3).Each(func(i int, ss *goquery.Selection) {
 			t.Magnet, magnetIsOk = ss.Attr("href")
+			fmt.Println("magnet")
+			fmt.Println(t.Magnet)
 		})
 		if !magnetIsOk {
 			log.Debug("Could not find a magnet for a torrent so ignoring it")
@@ -161,9 +163,15 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			}
 			resp, err := core.Fetch(url, localClient)
 			if err != nil {
+				log.WithFields(log.Fields{
+					"url": url,
+				}).Debug("Broken proxy")
 				httpRespErrCh <- struct{}{}
 				return
 			}
+			log.WithFields(log.Fields{
+				"url": url,
+			}).Debug("Parsing results")
 			httpRespCh <- resp
 		}(fullURL, timeout)
 
