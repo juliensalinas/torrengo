@@ -18,12 +18,7 @@ func parseDescPage(r io.Reader) (string, error) {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
-	var magnet string
-	var ok bool
-	doc.Find(".download-links-dontblock li a").Eq(0).Each(func(i int, s *goquery.Selection) {
-		magnet, ok = s.Attr("href")
-	})
-
+	magnet, ok := doc.Find(".download-links-dontblock li a").Eq(0).First().Attr("href")
 	if !ok {
 		return "", fmt.Errorf("could not extract magnet link")
 	}

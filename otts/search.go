@@ -33,6 +33,7 @@ import (
 	"github.com/juliensalinas/torrengo/core"
 
 	"github.com/PuerkitoBio/goquery"
+	log "github.com/sirupsen/logrus"
 )
 
 const baseURL string = "https://1337x.to"
@@ -77,42 +78,35 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 		var t Torrent
 
 		// Name is the text of the 2nd <a> tag, and desc URL is the href
-		s.Find("a").Eq(1).Each(func(i int, ss *goquery.Selection) {
-			t.Name = ss.Text()
-			path, ok := ss.Attr("href")
-			if ok {
-				t.DescURL = baseURL + path
-			}
-		})
+		path, ok := s.Find("a").Eq(1).First().Attr("href")
+		if !ok {
+			log.Debug("Could not find a description page for a torrent so ignoring it")
+			return
+		}
+		t.DescURL = baseURL + path
+		t.Name = s.Find("a").Eq(1).First().Text()
 
 		// Seeders and leechers are located in the 2nd and 3rd <td>.
 		// We convert it to integers and if conversion fails we convert it to -1.
-		s.Find("td").Eq(1).Each(func(i int, ss *goquery.Selection) {
-			seedersStr := ss.Text()
-			seeders, err := strconv.Atoi(seedersStr)
-			if err != nil {
-				seeders = -1
-			}
-			t.Seeders = seeders
-		})
-		s.Find("td").Eq(2).Each(func(i int, ss *goquery.Selection) {
-			leechersStr := ss.Text()
-			leechers, err := strconv.Atoi(leechersStr)
-			if err != nil {
-				leechers = -1
-			}
-			t.Leechers = leechers
-		})
+		seedersStr := s.Find("td").Eq(1).First().Text()
+		seeders, err := strconv.Atoi(seedersStr)
+		if err != nil {
+			seeders = -1
+		}
+		t.Seeders = seeders
+
+		leechersStr := s.Find("td").Eq(2).First().Text()
+		leechers, err := strconv.Atoi(leechersStr)
+		if err != nil {
+			leechers = -1
+		}
+		t.Leechers = leechers
 
 		// Upload date is the text of the 4th <td> tag
-		s.Find("td").Eq(3).Each(func(i int, ss *goquery.Selection) {
-			t.UplDate = ss.Text()
-		})
+		t.UplDate = s.Find("td").Eq(3).First().Text()
 
 		// Size is the text of the 5th <td> tag
-		s.Find("td").Eq(4).Each(func(i int, ss *goquery.Selection) {
-			t.Size = ss.Text()
-		})
+		t.Size = s.Find("td").Eq(4).First().Text()
 
 		torrents = append(torrents, t)
 	})

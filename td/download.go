@@ -12,6 +12,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
 	"github.com/juliensalinas/torrengo/core"
+	log "github.com/sirupsen/logrus"
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
@@ -22,17 +23,20 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 		return "", "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
-	doc.Find("img[alt='Download torrent']").Each(func(i int, s *goquery.Selection) {
-		// Get the torrent url from a tag containing an image whose alt attribute is
-		// "Download torrent"
-		fileURL, _ = s.Parent().Attr("href")
-	})
-	doc.Find("a:contains('Magnet Link')").Each(func(i int, s *goquery.Selection) {
-		// Get the magnet link from an <a> tag containing a "Magnet Link" text
-		magnet, _ = s.Attr("href")
-	})
+	// Get the torrent url from a tag containing an image whose alt attribute is
+	// "Download torrent"
+	fileURL, fileURLOk := doc.Find("img[alt='Download torrent']").First().Parent().Attr("href")
+	if !fileURLOk {
+		log.Debug("Could not find a file URL")
+	}
 
-	if fileURL == "" && magnet == "" {
+	// Get the magnet link from an <a> tag containing a "Magnet Link" text
+	magnet, magnetOk := doc.Find("a:contains('Magnet Link')").First().Attr("href")
+	if !magnetOk {
+		log.Debug("Could not find a magnet link")
+	}
+
+	if !fileURLOk && !magnetOk {
 		return "", "", fmt.Errorf("could not find neither a torrent file nor a magnet link on the description page")
 	}
 

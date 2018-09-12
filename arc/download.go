@@ -19,25 +19,22 @@ func parseDescPage(r io.Reader) (string, error) {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
-	var fileURL string
-	var path string
-	var pathIsOk bool
+	// Get the torrent file path from a "<a href=...>"" whose class starts with
+	// "format-summary" and whose text contains the word "TORRENT"
+	fileType := doc.Find(".format-summary ").First().Text()
+	if fileType == "" {
+		return "", fmt.Errorf("could not find the .format-summary tag on description page")
+	}
 
-	doc.Find(".format-summary ").Each(func(i int, s *goquery.Selection) {
-		// Get the torrent file path from a "<a href=...>"" whose class starts with
-		// "format-summary" and whose text contains the word "TORRENT"
-		fileType := s.Text()
-		if strings.Contains(fileType, "TORRENT") {
-			path, pathIsOk = s.Attr("href")
-			if !pathIsOk {
-				return
-			}
-			fileURL = baseURL + path
-		}
-	})
-	if !pathIsOk {
+	if !strings.Contains(fileType, "TORRENT") {
+		return "", fmt.Errorf("could not find the TORRENT string in fileType")
+	}
+
+	path, ok := doc.Find(".format-summary ").First().Attr("href")
+	if !ok {
 		return "", fmt.Errorf("could not find a torrent file on the description page")
 	}
+	fileURL := baseURL + path
 
 	return fileURL, nil
 }

@@ -81,28 +81,19 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 		// Get path to torrent description page from a "<a>" tag located inside a
 		// "class=C234"
 		var t Torrent
-		var path string
-		var pathIsOk bool
 
-		s.Find("a").Eq(0).Each(func(i int, ss *goquery.Selection) {
-			path, pathIsOk = ss.Attr("href")
-			// If no description url found, stop here
-			if !pathIsOk {
-				return
-			}
-			// Build the real url
-			t.DescURL = baseURL + path
-		})
-		if !pathIsOk {
+		path, ok := s.Find("a").Eq(0).First().Attr("href")
+		// If no description url found, stop here
+		if !ok {
 			log.Debug("Could not find a description page for a torrent so ignoring it")
 			return
 		}
+		// Build the real url
+		t.DescURL = baseURL + path
 
-		s.Find(".ttl").Each(func(i int, ss *goquery.Selection) {
-			// Get name from a "class=ttl" tag.
-			// Remove dirty spaces before and after title.
-			t.Name = strings.TrimSpace(ss.Text())
-		})
+		// Get name from a "class=ttl" tag.
+		// Remove dirty spaces before and after title.
+		t.Name = strings.TrimSpace(s.Find(".ttl").First().Text())
 
 		torrents = append(torrents, t)
 

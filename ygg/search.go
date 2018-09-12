@@ -76,57 +76,45 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// Results are located in a clean html <table> whose class is table
 	doc.Find(".table tbody tr").Each(func(i int, s *goquery.Selection) {
 		var t Torrent
-		var descURLIsOk bool
 
 		// Torrent name is the text of the 2th <td> tag and descURL is its href
-		s.Find("td a").Eq(1).Each(func(i int, ss *goquery.Selection) {
-			t.DescURL, descURLIsOk = ss.Attr("href")
-			if !descURLIsOk {
-				return
-			}
-			t.Name = ss.Text()
-		})
-		if !descURLIsOk {
+		descURL, ok := s.Find("td a").Eq(1).First().Attr("href")
+		if !ok {
 			log.Debug("Could not find description URL for a torrent so ignoring it")
 			return
 		}
+		t.DescURL = descURL
+
+		t.Name = s.Find("td a").Eq(1).First().Text()
 
 		// Upload date is the text of the div whose class is hidden in the 3rd <td> tag.
 		// A proper timestamp is retrieved. We convert it to datetime.
-		s.Find("td").Eq(4).Each(func(i int, ss *goquery.Selection) {
-			timestampStr := ss.Find(".hidden").Text()
-			timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
-			if err != nil {
-				t.UplDate = ""
-			} else {
-				t.UplDate = time.Unix(timestamp, 0).Format("2006/01/02 15:04")
-			}
-		})
+		timestampStr := s.Find("td").Eq(4).First().Find(".hidden").First().Text()
+		timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+		if err != nil {
+			t.UplDate = ""
+		} else {
+			t.UplDate = time.Unix(timestamp, 0).Format("2006/01/02 15:04")
+		}
 
 		// File size is the text of the 4th <td> tag
-		s.Find("td").Eq(5).Each(func(i int, ss *goquery.Selection) {
-			t.Size = ss.Text()
-		})
+		t.Size = s.Find("td").Eq(5).First().Text()
 
 		// Seeders is the text of the 6th <td> tag
-		s.Find("td").Eq(7).Each(func(i int, ss *goquery.Selection) {
-			seedersStr := ss.Text()
-			seeders, err := strconv.Atoi(seedersStr)
-			if err != nil {
-				seeders = -1
-			}
-			t.Seeders = seeders
-		})
+		seedersStr := s.Find("td").Eq(7).First().Text()
+		seeders, err := strconv.Atoi(seedersStr)
+		if err != nil {
+			seeders = -1
+		}
+		t.Seeders = seeders
 
 		// Leechers is the text of the 7th <td> tag
-		s.Find("td").Eq(8).Each(func(i int, ss *goquery.Selection) {
-			leechersStr := ss.Text()
-			leechers, err := strconv.Atoi(leechersStr)
-			if err != nil {
-				leechers = -1
-			}
-			t.Leechers = leechers
-		})
+		leechersStr := s.Find("td").Eq(8).First().Text()
+		leechers, err := strconv.Atoi(leechersStr)
+		if err != nil {
+			leechers = -1
+		}
+		t.Leechers = leechers
 
 		torrents = append(torrents, t)
 	})

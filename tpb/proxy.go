@@ -22,18 +22,13 @@ func parseProxiesPage(r io.Reader) ([]string, error) {
 
 	// Results are located in a clean html <table>
 	doc.Find("#proxyList tbody tr").Each(func(i int, s *goquery.Selection) {
-		var url string
-		var urlIsOk bool
-
 		// TPB site url is the href of a tag whose class is "site"
-		s.Find(".site a ").Each(func(i int, ss *goquery.Selection) {
-			url, urlIsOk = ss.Attr("href")
-		})
-		if urlIsOk {
-			urls = append(urls, url)
-		} else {
-			log.Debug("could not find a url for a proxy")
+		url, ok := s.Find(".site a ").First().Attr("href")
+		if !ok {
+			log.Debug("could not find an url for a proxy")
+			return
 		}
+		urls = append(urls, url)
 	})
 
 	return urls, nil

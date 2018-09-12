@@ -37,6 +37,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
+	log "github.com/sirupsen/logrus"
 )
 
 const baseURL string = "https://www.torrentdownloads.me"
@@ -83,49 +84,44 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	l := doc.Find(".inner_container ").Children().Size()
 
 	doc.Find(".inner_container ").Children().Each(func(i int, s *goquery.Selection) {
+		var t Torrent
 		// Many elements in inner_container are junk (ads, empty stuffs,...) so
 		// we only take elements between 10 and 2 before the end
 		if i > 9 && i < l-2 {
 			// Get path to torrent description page from a "<a>" tag located
 			// inside a <p> tag
-			path, ok := s.Find("p a").Attr("href")
-			if ok {
-				// Get name from the same place as path
-				name := strings.TrimSpace(s.Find("p a").Text())
-				url := baseURL + path
-				t := Torrent{
-					DescURL: url,
-					Name:    name,
-				}
-				// Get leechers, seeders and size from the 3 first <span> tags.
-				// Try to convert leechers and seeders to integers but if does not work
-				// we do not stop for all that: we just set the leechers and seeders to
-				// -1 so the calling library can differentiate it.
-				s.Find("span").Each(func(i int, ss *goquery.Selection) {
-					switch i {
-					case 1:
-						leechersStr := ss.Text()
-						leechers, err := strconv.Atoi(leechersStr)
-						if err != nil {
-							leechers = -1
-						}
-						t.Leechers = leechers
-
-					case 2:
-						seedersStr := ss.Text()
-						seeders, err := strconv.Atoi(seedersStr)
-						if err != nil {
-							seeders = -1
-						}
-						t.Seeders = seeders
-
-					case 3:
-						size := ss.Text()
-						t.Size = size
-					}
-				})
-				torrents = append(torrents, t)
+			path, ok := s.Find("p a").First().Attr("href")
+			if !ok {
+				log.Debug("Could not find the description URL of a torrent")
+				return
 			}
+			t.DescURL = baseURL + path
+
+			// Get name from the same place as path
+			t.Name = strings.TrimSpace(s.Find("p a").First().Text())
+
+			// Get leechers, seeders and size from <span> tags 2, 3 and 4.
+			// Try to convert leechers and seeders to integers but if does not work
+			// we do not stop for all that: we just set the leechers and seeders to
+			// -1 so the calling library can differentiate it.
+			leechersStr := s.Find("span").Eq(1).First().Text()
+			leechers, err := strconv.Atoi(leechersStr)
+			if err != nil {
+				leechers = -1
+			}
+			t.Leechers = leechers
+
+			seedersStr := s.Find("span").Eq(2).First().Text()
+			seeders, err := strconv.Atoi(seedersStr)
+			if err != nil {
+				seeders = -1
+			}
+			t.Seeders = seeders
+
+			size := s.Find("span").Eq(3).First().Text()
+			t.Size = size
+
+			torrents = append(torrents, t)
 		}
 	})
 

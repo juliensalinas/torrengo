@@ -69,54 +69,44 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	// its name, its size, its seeders, and its leechers
 	var torrents []Torrent
 	// Results are located in a clean html <table>
+	fmt.Println("before")
 	doc.Find("#searchResult tbody tr").Each(func(i int, s *goquery.Selection) {
 		var t Torrent
-		var magnetIsOk bool
-
+		fmt.Println("in")
 		// Magnet is the href of the 4th <a> tag
-		s.Find("a").Eq(3).Each(func(i int, ss *goquery.Selection) {
-			t.Magnet, magnetIsOk = ss.Attr("href")
-			fmt.Println("magnet")
-			fmt.Println(t.Magnet)
-		})
-		if !magnetIsOk {
+		magnet, ok := s.Find("a").Eq(3).First().Attr("href")
+		if !ok {
 			log.Debug("Could not find a magnet for a torrent so ignoring it")
 			return
 		}
+		t.Magnet = magnet
 
 		// Torrent name is the text of a tag whose class is "detLink"
-		s.Find(".detLink").Each(func(i int, ss *goquery.Selection) {
-			t.Name = ss.Text()
-		})
+		t.Name = s.Find(".detLink").First().Text()
 
 		// Size and upload date are concatenated in a string in a <font> tag.
 		// Each piece of info is comma separated.
 		// We then remove spaces and unneeded text.
-		s.Find("font").Each(func(i int, ss *goquery.Selection) {
-			text := ss.Text()
-			textSlc := strings.Split(text, ",")
-			t.UplDate = strings.TrimSpace(strings.Replace(textSlc[0], "Uploaded", "", -1))
-			t.Size = strings.TrimSpace(strings.Replace(textSlc[1], "Size", "", -1))
-		})
+		text := s.Find("font").First().Text()
+		textSlc := strings.Split(text, ",")
+		t.UplDate = strings.TrimSpace(strings.Replace(textSlc[0], "Uploaded", "", -1))
+		t.Size = strings.TrimSpace(strings.Replace(textSlc[1], "Size", "", -1))
 
 		// Seeders and leechers are located in the 3rd and 4th <td>.
 		// We convert it to integers and if conversion fails we convert it to -1.
-		s.Find("td").Eq(2).Each(func(i int, ss *goquery.Selection) {
-			seedersStr := ss.Text()
-			seeders, err := strconv.Atoi(seedersStr)
-			if err != nil {
-				seeders = -1
-			}
-			t.Seeders = seeders
-		})
-		s.Find("td").Eq(3).Each(func(i int, ss *goquery.Selection) {
-			leechersStr := ss.Text()
-			leechers, err := strconv.Atoi(leechersStr)
-			if err != nil {
-				leechers = -1
-			}
-			t.Leechers = leechers
-		})
+		seedersStr := s.Find("td").Eq(2).First().Text()
+		seeders, err := strconv.Atoi(seedersStr)
+		if err != nil {
+			seeders = -1
+		}
+		t.Seeders = seeders
+
+		leechersStr := s.Find("td").Eq(3).First().Text()
+		leechers, err := strconv.Atoi(leechersStr)
+		if err != nil {
+			leechers = -1
+		}
+		t.Leechers = leechers
 
 		torrents = append(torrents, t)
 	})
@@ -124,11 +114,26 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	return torrents, nil
 }
 
+// checkEmptyResp checks whether the tpb response contains the
+// #searchResult id, otherwise it means the site is broken
+func checkEmptyResp(r io.Reader) bool {
+	doc, err := goquery.NewDocumentFromReader(r)
+	if err != nil {
+		return false
+	}
+
+	if doc.Find("#searchResult").Nodes == nil {
+		return false
+	}
+
+	return true
+}
+
 // Lookup takes a user search as a parameter and
 // returns clean torrent information fetched from ThePirateBay.
 // It first looks for the ThePirateBay proxies and then
 // concurrently fetches all of them and retrieve results from
-// the quickest one.
+// the quickest one after checking that the latter is not broken.
 // A custom user timeout is set.
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	client := &http.Client{
@@ -165,13 +170,21 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			if err != nil {
 				log.WithFields(log.Fields{
 					"url": url,
-				}).Debug("Broken proxy")
+				}).Debug("Broken proxy (no code 200)")
+				httpRespErrCh <- struct{}{}
+				return
+			}
+			ok := checkEmptyResp(resp.Body)
+			if !ok {
+				log.WithFields(log.Fields{
+					"url": url,
+				}).Debug("Broken proxy (code 200 but empty response)")
 				httpRespErrCh <- struct{}{}
 				return
 			}
 			log.WithFields(log.Fields{
 				"url": url,
-			}).Debug("Parsing results")
+			}).Debug("Found a working proxy")
 			httpRespCh <- resp
 		}(fullURL, timeout)
 
