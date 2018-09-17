@@ -13,7 +13,7 @@ Nice supported features:
 * torrent file download on <http://torrentdownloads.me> is protected by Cloudflare, so this program tries to bypass the protection by answering Cloudflare's Javascript challenges
 * <http://www.yggtorrent.is> can be searched freely, but an account is needed to download the torrent file, so the program authenticates the user before downloading the torrent file
 * downloaded torrents can be launched in Deluge
-* you can set a timeout so long-running requests are ignored
+* a timeout can be set so long-running requests are ignored
 
 Current supported sources are the following:
 
