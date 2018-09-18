@@ -129,7 +129,7 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 }
 
 // Lookup takes a user search as a parameter, launches the http request
-// with a custom timout, and returns clean torrent information fetched from torrentdownloads.me
+// with a custom timeout, and returns clean torrent information fetched from torrentdownloads.me
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	client := &http.Client{
 		Timeout: timeout,

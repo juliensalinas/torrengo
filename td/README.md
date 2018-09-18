@@ -2,6 +2,8 @@
 
 **td** searches torrents on torrentdownloads.me
 
+See [here the Go documentation](https://godoc.org/github.com/juliensalinas/torrengo/td) of this library.
+
 The **Lookup** function searches torrentdownloads.me and returns a clean list of torrents. For each torrent the following info is retrieved:
 
 * name

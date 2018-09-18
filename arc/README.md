@@ -2,6 +2,8 @@
 
 **arc** searches torrents on Archive.org
 
+See [here the Go documentation](https://godoc.org/github.com/juliensalinas/torrengo/arc) of this library.
+
 The **Lookup** function searches Archive.org and returns a clean list of torrents. For each torrent the following info is retrieved:
 
 * name
