@@ -21,7 +21,7 @@ Current supported sources are the following:
 1. all The Pirate Bay urls located on <https://proxybay.bz> (called **tpb** internally)
 1. <http://torrentdownloads.me> (called **td** internally)
 1. <http://1337x.to> (called **otts** internally)
-1. <http://www.yggtorrent.is> (called **ygg** internally)
+1. <http://www.yggtorrent.is> (previously t411, called **ygg** internally)
 
 **Caution!** Apart from Archive.org, the websites above might host some illegal content and in some countries their use might be prohibited. Read [legal issues regarding The Pirate Bay](https://en.wikipedia.org/wiki/The_Pirate_Bay#Legal_issues) for example. Neither I, nor the tool shall be held responsible for any action taken against you for using Torrengo on the above-mentioned sites.
 
@@ -29,9 +29,8 @@ Current supported sources are the following:
 
 For security reasons I don't provide with compiled executables. The program can be easily installed and compiled with the usual Go tools:
 
-1. Set your Go environment variables properly
 1. `go get github.com/juliensalinas/torrengo`
-1. `go build torrengo`
+1. `go build github.com/juliensalinas/torrengo`
 
 Each website's scraper is an independent library that can be installed and reused. For example if you only want to use the Archive.org scraping library, simply do:
 
@@ -42,6 +41,8 @@ Each website's scraper is an independent library that can be installed and reuse
 Searching "Dumas Montecristo" from all sources is as simple as:
 
 `torrengo Dumas Montecristo`
+
+![Torrgengo output](https://juliensalinas.com/en/images/torrengo-example_201809171014.png)
 
 If you want to search from a specific source (let's say Archive.org):
 
