@@ -7,7 +7,9 @@
 // Torrent search is achieved by Lookup().
 // Input is a search string.
 // Output is a slice of maps made up of the following keys:
+//
 // - DescUrl: the torrent description dedicated url
+//
 // - Name: the torrent name
 //
 // Torrent url extraction and torrent file download are achieved by FindAndDlFile().

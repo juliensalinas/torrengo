@@ -9,11 +9,17 @@
 // Torrent search is achieved by Lookup().
 // Input is a search string.
 // Output is a slice of maps made up of the following keys:
+//
 // - DescURL: the torrent description page
+//
 // - Name: the torrent name
+//
 // - Size: the size of the file to be downloaded
+//
 // - UplDate: the date of upload
+//
 // - Leechers: the number of leechers (set to -1 if cannot be converted to integer)
+//
 // - Seechers: the number of seechers (set to -1 if cannot be converted to integer)
 //
 // Magnet file extraction are achieved by ExtractMag().
