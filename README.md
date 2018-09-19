@@ -56,9 +56,13 @@ Sources names:
 * <http://1337x.to>: otts
 * <https://www.yggtorrent.is>: ygg
 
-If you want to search from a several specific sources (let's say Archive.org and ThePirateBay), use commas:
+If you want to search from multiple sources (let's say Archive.org and ThePirateBay), use commas:
 
 `torrengo -s arc,tpb Dumas Montecristo`
+
+If some sources are too slow to respond, use a timeout. For example the following stops every HTTP requests that take more than 2 seconds and returns the other results found:
+
+`./torrengo -t 2000 Dumas Montecristo`
 
 Some sources give both a magnet link and a torrent file (you can choose which one you want), some only give a torrent file, and some only give a magnet link.
 
