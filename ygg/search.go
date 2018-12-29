@@ -41,7 +41,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const baseURL = "yggtorrent.to"
+// const baseURL = "yggtorrent.to"
+const baseURL = "www2.yggtorrent.gg"
 
 // searchURL is the url used to retrieve a list of torrents based on user keywords.
 // A typical final url looks like:
