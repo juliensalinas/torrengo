@@ -85,9 +85,9 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	var torrents []Torrent
 
 	// Get the total number of items found
-	l := doc.Find(".inner_container").Children().Size()
+	l := doc.Find(".inner_container").Eq(1).Children().Size()
 
-	doc.Find(".inner_container").Children().Each(func(i int, s *goquery.Selection) {
+	doc.Find(".inner_container").Eq(1).Children().Each(func(i int, s *goquery.Selection) {
 		var t Torrent
 		// Many elements in inner_container are junk (ads, empty stuffs,...) so
 		// we only take elements between 10 and 2 before the end

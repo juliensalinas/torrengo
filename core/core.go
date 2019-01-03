@@ -39,7 +39,8 @@ func Fetch(url string, client *http.Client) (*http.Response, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"headers": resp.Header,
+		"httpStatus": resp.Status,
+		"headers":    resp.Header,
 	}).Debug("Successfully received HTTP response")
 
 	if resp.StatusCode != http.StatusOK {
