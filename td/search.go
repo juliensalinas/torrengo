@@ -28,7 +28,6 @@
 // because torrentdownloads has a Cloudflare protection so  does not work 100% of the time).
 // Input is the torrent file url.
 // Output is the local path where the torrent file was downloaded.
-
 package td
 
 import (
@@ -66,7 +65,7 @@ func buildSearchURL(in string) (string, error) {
 		return "", fmt.Errorf("error during url parsing: %v", err)
 	}
 
-	URL.Path += "/search"
+	URL.Path += "/search/"
 
 	params := url.Values{}
 	params.Add("search", in)
@@ -86,9 +85,9 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 	var torrents []Torrent
 
 	// Get the total number of items found
-	l := doc.Find(".inner_container ").Children().Size()
+	l := doc.Find(".inner_container").Children().Size()
 
-	doc.Find(".inner_container ").Children().Each(func(i int, s *goquery.Selection) {
+	doc.Find(".inner_container").Children().Each(func(i int, s *goquery.Selection) {
 		var t Torrent
 		// Many elements in inner_container are junk (ads, empty stuffs,...) so
 		// we only take elements between 10 and 2 before the end

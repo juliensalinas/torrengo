@@ -210,10 +210,10 @@ func setLogger(isVerbose bool) {
 	}
 
 	// Log as standard text
-	// log.SetFormatter(&log.TextFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
 
 	// Log as JSON instead of the default ASCII formatter
-	log.SetFormatter(&log.JSONFormatter{})
+	// log.SetFormatter(&log.JSONFormatter{})
 
 	// Log filename and line number.
 	// Should be removed from production because adds a performance cost.

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // UserAgent is a customer browser user agent used in every HTTP connections
@@ -23,10 +25,22 @@ func Fetch(url string, client *http.Client) (*http.Response, error) {
 
 	req.Header.Set("User-Agent", UserAgent)
 
+	log.WithFields(log.Fields{
+		"httpMethod":   req.Method,
+		"url":          req.URL,
+		"httpProtocol": req.Proto,
+		"host":         req.Host,
+		"headers":      req.Header,
+	}).Debug("Successfully built HTTP request")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("could not launch request: %v", err)
 	}
+
+	log.WithFields(log.Fields{
+		"headers": resp.Header,
+	}).Debug("Successfully received HTTP response")
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
