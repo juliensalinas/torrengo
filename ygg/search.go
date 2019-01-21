@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"time"
@@ -132,8 +133,11 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // Lookup takes a user search as a parameter, launches the http request
 // with a custom timeout, and returns clean torrent information fetched from Ygg Torrent
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
+	cookieJar, _ := cookiejar.New(nil)
+
 	client := &http.Client{
 		Timeout: timeout,
+		Jar:     cookieJar,
 	}
 
 	searchParams.Add("name", in)
