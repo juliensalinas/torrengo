@@ -36,9 +36,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/juliensalinas/torrengo/core"
-
 	"github.com/PuerkitoBio/goquery"
+	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
+	"github.com/juliensalinas/torrengo/core"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -135,9 +135,14 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	cookieJar, _ := cookiejar.New(nil)
 
+	cfScraper, err := cfScraper.NewTransport(http.DefaultTransport)
+	if err != nil {
+		return nil, fmt.Errorf("could not initialize Cloudflare scraper: %v", err)
+	}
 	client := &http.Client{
-		Timeout: timeout,
-		Jar:     cookieJar,
+		Transport: cfScraper,
+		Timeout:   timeout,
+		Jar:       cookieJar,
 	}
 
 	searchParams.Add("name", in)
