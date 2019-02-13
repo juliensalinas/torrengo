@@ -30,14 +30,12 @@ package ygg
 import (
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
 	"github.com/juliensalinas/torrengo/core"
 	log "github.com/sirupsen/logrus"
 )
@@ -133,28 +131,17 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // Lookup takes a user search as a parameter, launches the http request
 // with a custom timeout, and returns clean torrent information fetched from Ygg Torrent
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
-	cookieJar, _ := cookiejar.New(nil)
-
-	cfScraper, err := cfScraper.NewTransport(http.DefaultTransport)
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize Cloudflare scraper: %v", err)
-	}
-	client := &http.Client{
-		Transport: cfScraper,
-		Timeout:   timeout,
-		Jar:       cookieJar,
-	}
 
 	searchParams.Add("name", in)
 	searchURL.RawQuery = searchParams.Encode()
 
-	resp, err := core.Fetch(searchURL.String(), client)
+	respStr, err := core.FetchFromCloudflare(searchURL.String())
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
-	torrents, err := parseSearchPage(resp.Body)
+	resp := strings.NewReader(respStr)
+	torrents, err := parseSearchPage(resp)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}

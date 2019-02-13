@@ -1,10 +1,12 @@
 package core
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -49,6 +51,36 @@ func Fetch(url string, client *http.Client) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+// FetchFromCloudflare fetches data from a Cloudflare protected webpage.
+// It uses the cfscrape library in Python (https://github.com/Anorov/cloudflare-scrape).
+// Python, Nodejs, and cfscrape should be installed for this to work.
+func FetchFromCloudflare(url string) (string, error) {
+	// Build the Python script
+	pythonScript := fmt.Sprintf("import cfscrape as cs; s = cs.create_scraper(); print(s.get(\"%s\").content)", url)
+
+	// Launch Python script (-c meaning everything will be launched inline)
+	cmd := exec.Command("python", "-c", pythonScript)
+
+	// Get the standard and error outputs
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("could not launch Python script: %v", err)
+	}
+	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
+	if errStr != "" {
+		return "", fmt.Errorf("could not get HTTP response with Python: %v", errStr)
+	}
+
+	log.WithFields(log.Fields{
+		"url": url,
+	}).Debug("Successfully received HTTP response with Python")
+
+	return outStr, nil
 }
 
 // DlFile downloads the torrent with a custom client created by user and returns the path of
