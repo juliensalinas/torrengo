@@ -129,13 +129,13 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 }
 
 // Lookup takes a user search as a parameter, launches the http request
-// with a custom timeout, and returns clean torrent information fetched from Ygg Torrent
+// with a custom timeout, and returns clean torrent information fetched from Ygg Torrent.
+// Ygg has a Cloudflare protection so we need to use the FetchFromCloudflare utility.
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
-
 	searchParams.Add("name", in)
 	searchURL.RawQuery = searchParams.Encode()
 
-	respStr, err := core.FetchFromCloudflare(searchURL.String())
+	respStr, err := core.FetchFromCloudflare(searchURL.String(), timeout)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

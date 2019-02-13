@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -56,9 +57,16 @@ func Fetch(url string, client *http.Client) (*http.Response, error) {
 // FetchFromCloudflare fetches data from a Cloudflare protected webpage.
 // It uses the cfscrape library in Python (https://github.com/Anorov/cloudflare-scrape).
 // Python, Nodejs, and cfscrape should be installed for this to work.
-func FetchFromCloudflare(url string) (string, error) {
+func FetchFromCloudflare(url string, timeout time.Duration) (string, error) {
 	// Build the Python script
-	pythonScript := fmt.Sprintf("import cfscrape as cs; s = cs.create_scraper(); print(s.get(\"%s\").content)", url)
+	pythonScript := fmt.Sprintf(
+		"import cfscrape as cs; s = cs.create_scraper(); print(s.get(\"%s\", timeout=%f).content)",
+		url,
+		timeout.Seconds(),
+	)
+	log.WithFields(log.Fields{
+		"pythonScript": pythonScript,
+	}).Debug("Built the Python script")
 
 	// Launch Python script (-c meaning everything will be launched inline)
 	cmd := exec.Command("python", "-c", pythonScript)
@@ -68,14 +76,10 @@ func FetchFromCloudflare(url string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("could not launch Python script: %v", err)
-	}
 	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
-	if errStr != "" {
-		return "", fmt.Errorf("could not get HTTP response with Python: %v", errStr)
+	if err != nil || errStr != "" {
+		return "", fmt.Errorf("could not get HTTP response with Python: %v\n%v", errStr, outStr)
 	}
-
 	log.WithFields(log.Fields{
 		"url": url,
 	}).Debug("Successfully received HTTP response with Python")
