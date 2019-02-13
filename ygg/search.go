@@ -39,6 +39,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/publicsuffix"
 )
 
 // const baseURL = "yggtorrent.to"
@@ -132,8 +133,10 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // Lookup takes a user search as a parameter, launches the http request
 // with a custom timeout, and returns clean torrent information fetched from Ygg Torrent.
 // Ygg has a Cloudflare protection so we need to use the FetchFromCloudflare utility.
-func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
-	cookieJar, _ := cookiejar.New(nil)
+func Lookup(in string, timeout time.Duration) ([]Torrent, *http.Client, error) {
+	// Init cookies.
+	// Using the publicsuffix list is recommended by Go docs
+	cookieJar, _ := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 
 	client := &http.Client{
 		Timeout: timeout,
@@ -145,19 +148,19 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 
 	client, err := core.BypassCloudflare(searchURL, client)
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching url: %v", err)
+		return nil, nil, fmt.Errorf("error while fetching url: %v", err)
 	}
 
 	resp, err := core.Fetch(searchURL.String(), client)
 	if err != nil {
-		return nil, fmt.Errorf("error while fetching url: %v", err)
+		return nil, nil, fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
 
 	torrents, err := parseSearchPage(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
+		return nil, nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}
 
-	return torrents, nil
+	return torrents, client, nil
 }

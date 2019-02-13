@@ -3,14 +3,11 @@ package ygg
 import (
 	"fmt"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/juliensalinas/torrengo/core"
-	"golang.org/x/net/publicsuffix"
 )
 
 // loginURL is the url used to retrieve to authenticate user.
@@ -20,20 +17,12 @@ var loginURL = url.URL{
 	Path:   "user/login",
 }
 
-// authuser authenticates user and stores cookies so that authentication is memorized
-func authUser(userID string, userPass string, timeout time.Duration) (*http.Client, error) {
+// authUser authenticates user and stores cookies so that authentication is memorized
+func authUser(userID string, userPass string, client *http.Client) (*http.Client, error) {
 	// Encode id and password as get parameters that will be passed to the request body
 	formData := url.Values{
 		"id":   {userID},
 		"pass": {userPass},
-	}
-
-	// Store cookies.
-	// Using the publicsuffix list is recommended by Go docs
-	cookieJar, _ := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-	client := &http.Client{
-		Jar:     cookieJar,
-		Timeout: timeout,
 	}
 
 	// Create the POST request and put credentials in the body

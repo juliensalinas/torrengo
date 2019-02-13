@@ -3,6 +3,7 @@ package ygg
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -25,18 +26,21 @@ func parseDescPage(r io.Reader) (string, error) {
 }
 
 // FindAndDlFile authenticates user, opens the torrent description page,
-// and and downloads the torrent file.
+// and downloads the torrent file.
 // Returns the local path of downloaded torrent file.
 // A user timeout is set.
-func FindAndDlFile(descURL string, userID string, userPass string, timeout time.Duration) (string, error) {
+func FindAndDlFile(descURL string, userID string, userPass string, timeout time.Duration, client *http.Client) (string, error) {
+	// Set timeout
+	client.Timeout = timeout
+
 	// Authenticate user and create http client that handles cookie and timeout
-	httpClient, err := authUser(userID, userPass, timeout)
+	client, err := authUser(userID, userPass, client)
 	if err != nil {
 		return "", fmt.Errorf("error while authenticating: %v", err)
 	}
 
 	// Fetch url
-	resp, err := core.Fetch(descURL, httpClient)
+	resp, err := core.Fetch(descURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
@@ -49,7 +53,7 @@ func FindAndDlFile(descURL string, userID string, userPass string, timeout time.
 	}
 
 	// Download torrent
-	filePath, err := core.DlFile(fileURL, httpClient)
+	filePath, err := core.DlFile(fileURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}

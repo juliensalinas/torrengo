@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -61,11 +62,18 @@ type torrent struct {
 	filePath string
 }
 
+// torListAndHTTPClient contains the torrents found and the http client
+type torListAndHTTPClient struct {
+	torList    []torrent
+	httpClient *http.Client
+}
+
 // search represents the user search
 type search struct {
 	in              string
 	out             []torrent
 	sourcesToLookup []string
+	httpClient      *http.Client
 }
 
 // cleanIn cleans the user search input
@@ -132,7 +140,7 @@ func render(torrents []torrent) {
 }
 
 // getTorrentFile retrieves and displays torrent file to user
-func getTorrentFile(userID, userPass string, timeout time.Duration) {
+func getTorrentFile(userID, userPass string, timeout time.Duration, httpClient *http.Client) {
 	var err error
 	switch ft.source {
 	case "arc":
@@ -149,7 +157,7 @@ func getTorrentFile(userID, userPass string, timeout time.Duration) {
 		log.WithFields(log.Fields{
 			"sourceToSearch": "ygg",
 		}).Debug("Download torrent file")
-		ft.filePath, err = ygg.FindAndDlFile(ft.descURL, userID, userPass, timeout)
+		ft.filePath, err = ygg.FindAndDlFile(ft.descURL, userID, userPass, timeout, httpClient)
 	}
 	if err != nil {
 		fmt.Println("Could not retrieve the torrent file (see logs for more details).")
@@ -302,7 +310,7 @@ func main() {
 	tdTorListCh := make(chan []torrent)
 	tpbTorListCh := make(chan []torrent)
 	ottsTorListCh := make(chan []torrent)
-	yggTorListCh := make(chan []torrent)
+	yggTorListAndHTTPClientCh := make(chan torListAndHTTPClient)
 
 	// Channels for errors
 	arcSearchErrCh := make(chan error)
@@ -432,7 +440,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "ygg",
 				}).Debug("Start search goroutine")
-				yggTorrents, err := ygg.Lookup(s.in, timeout)
+				yggTorrents, httpClient, err := ygg.Lookup(s.in, timeout)
 				if err != nil {
 					yggSearchErrCh <- err
 					return
@@ -450,7 +458,9 @@ func main() {
 					}
 					torList = append(torList, t)
 				}
-				yggTorListCh <- torList
+
+				yggTorListAndHTTPClient := torListAndHTTPClient{torList, httpClient}
+				yggTorListAndHTTPClientCh <- yggTorListAndHTTPClient
 			}()
 		}
 	}
@@ -534,8 +544,9 @@ func main() {
 					"input": s.in,
 					"error": yggSearchErr,
 				}).Error("The ygg search goroutine broke")
-			case yggTorList := <-yggTorListCh:
-				s.out = append(s.out, yggTorList...)
+			case yggTorListAndHTTPClient := <-yggTorListAndHTTPClientCh:
+				s.out = append(s.out, yggTorListAndHTTPClient.torList...)
+				s.httpClient = yggTorListAndHTTPClient.httpClient
 				log.WithFields(log.Fields{
 					"input":          s.in,
 					"sourceToSearch": "ygg",
@@ -610,7 +621,7 @@ func main() {
 	// Download torrent and optionnaly open in torrent client
 	switch ft.source {
 	case "arc":
-		getTorrentFile("", "", timeout)
+		getTorrentFile("", "", timeout, nil)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath)
@@ -641,7 +652,7 @@ func main() {
 			log.WithFields(log.Fields{
 				"magnetLink": ft.magnet,
 			}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
-			getTorrentFile("", "", timeout)
+			getTorrentFile("", "", timeout, nil)
 			fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 			if launchClient == "y" {
 				openMagOrTorInClient(ft.filePath)
@@ -676,7 +687,7 @@ func main() {
 					openMagOrTorInClient(ft.magnet)
 				}
 			case 2:
-				getTorrentFile("", "", timeout)
+				getTorrentFile("", "", timeout, nil)
 				fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 				if launchClient == "y" {
 					openMagOrTorInClient(ft.filePath)
@@ -734,7 +745,7 @@ func main() {
 			userPass = strings.TrimSpace(strings.TrimSuffix(rawUserPass, lineBreak))
 			break
 		}
-		getTorrentFile(userID, userPass, timeout)
+		getTorrentFile(userID, userPass, timeout, s.httpClient)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath)
