@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
+	"net/http/cookiejar"
+	"net/url"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	cfScraper "github.com/juliensalinas/go-cloudflare-scraper"
 	"github.com/juliensalinas/torrengo/core"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/publicsuffix"
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
@@ -43,53 +42,41 @@ func parseDescPage(r io.Reader) (fileURL string, magnet string, err error) {
 	return fileURL, magnet, nil
 }
 
-// DlFileFromCloudflare downloads the torrent file.
-// The file is protected by Cloudflare so need to use a dedicated lib to bypass
-// it. Does not work 100% of the time...
-func DlFileFromCloudflare(fileURL string, timeout time.Duration) (string, error) {
-	// Get torrent file name from url
-	s := strings.Split(fileURL, "/")
-	fileName := s[len(s)-1]
-	s = strings.Split(fileName, ".torrent")
-	fileName = s[0]
-	fileName += ".torrent"
-
-	// Create local torrent file
-	out, err := os.Create(fileName)
-	if err != nil {
-		return "", fmt.Errorf("could not create the torrent file named %s: %v", fileName, err)
-	}
-	defer out.Close()
-
-	// Initialize the Cloudflare scraping lib (also automatically adds a user-agent)
-	cfScraper, err := cfScraper.NewTransport(http.DefaultTransport)
-	if err != nil {
-		return "", fmt.Errorf("could not initialize Cloudflare scraper: %v", err)
-	}
-	client := http.Client{
-		Transport: cfScraper,
-		Timeout:   timeout,
+// DlFile downloads the torrent
+// file.
+// A user timeout is set.
+// Returns the local path of downloaded torrent file.
+func DlFile(fileURL string, timeout time.Duration) (string, error) {
+	// Create an http client with user timeout.
+	// Init cookies.
+	// Using the publicsuffix list is recommended by Go docs.
+	cookieJar, _ := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	client := &http.Client{
+		Timeout: timeout,
+		Jar:     cookieJar,
 	}
 
-	// Download torrent
-	resp, err := client.Get(fileURL)
+	// Turn fileURL into proper url object
+	urlObj, err := url.Parse(fileURL)
 	if err != nil {
-		return "", fmt.Errorf("could not download the torrent file: %v", err)
+		return "", fmt.Errorf("could not turn descURL into proper url object: %v", err)
+	}
+
+	// Validate Cloudflare
+	client, err = core.BypassCloudflare(*urlObj, client)
+
+	// Fetch url
+	resp, err := core.Fetch(fileURL, client)
+	if err != nil {
+		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Save torrent to disk
-	_, err = io.Copy(out, resp.Body)
+	// Download torrent
+	filePath, err := core.DlFile(fileURL, client)
 	if err != nil {
-		return "", fmt.Errorf("could not save the torrent file to disk: %v", err)
+		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}
-
-	// Get absolute file path of torrent
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		return "", fmt.Errorf("could not retrieve current directory of saved filed: %v", err)
-	}
-	filePath := dir + "/" + fileName
 
 	return filePath, nil
 }

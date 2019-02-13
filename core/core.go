@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -118,39 +117,6 @@ func BypassCloudflare(url url.URL, client *http.Client) (*http.Client, error) {
 	log.Debug("Successfully added Clouflare cookies to client")
 
 	return client, nil
-}
-
-// FetchFromCloudflare fetches data from a Cloudflare protected webpage.
-// It uses the cfscrape library in Python (https://github.com/Anorov/cloudflare-scrape).
-// Python, Nodejs, and cfscrape should be installed for this to work.
-func FetchFromCloudflare(url string, timeout time.Duration) (string, error) {
-	// Build the Python script
-	pythonScript := fmt.Sprintf(
-		"import cfscrape as cs; s = cs.create_scraper(); print(s.get(\"%s\", timeout=%f).content)",
-		url,
-		timeout.Seconds(),
-	)
-	log.WithFields(log.Fields{
-		"pythonScript": pythonScript,
-	}).Debug("Built the Python script")
-
-	// Launch Python script (-c meaning everything will be launched inline)
-	cmd := exec.Command("python", "-c", pythonScript)
-
-	// Get the standard and error outputs
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
-	if err != nil || errStr != "" {
-		return "", fmt.Errorf("could not get HTTP response with Python: %v\n%v", errStr, outStr)
-	}
-	log.WithFields(log.Fields{
-		"url": url,
-	}).Debug("Successfully received HTTP response with Python")
-
-	return outStr, nil
 }
 
 // DlFile downloads the torrent with a custom client created by user and returns the path of

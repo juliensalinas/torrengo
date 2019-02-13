@@ -152,7 +152,7 @@ func getTorrentFile(userID, userPass string, timeout time.Duration, httpClient *
 		log.WithFields(log.Fields{
 			"sourceToSearch": "td",
 		}).Debug("Download torrent file")
-		ft.filePath, err = td.DlFileFromCloudflare(ft.fileURL, timeout)
+		ft.filePath, err = td.DlFile(ft.fileURL, timeout)
 	case "ygg":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "ygg",
@@ -665,7 +665,7 @@ func main() {
 			// Ask user to choose between file download and magnet download
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +
-				lineBreak + "[1] Magnet link" + lineBreak + "[2] Torrent file (careful: not working 100% of the time)")
+				lineBreak + "[1] Magnet link" + lineBreak + "[2] Torrent file")
 			var choice int
 			for {
 				choiceStr, err := reader.ReadString('\n')
