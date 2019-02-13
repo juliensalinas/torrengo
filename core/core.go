@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,6 +53,71 @@ func Fetch(url string, client *http.Client) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+// BypassCloudflare validates the Clouflare's Javascript challenge.
+// Once the challenge is resolved, it passes 2 new Cloudflare cookies to the client
+// so every new requests won't be challenged anymore.
+// It uses the cfscrape library in Python (https://github.com/Anorov/cloudflare-scrape).
+// Python, Nodejs, and cfscrape should be installed for this to work.
+func BypassCloudflare(url url.URL, client *http.Client) (*http.Client, error) {
+	// Build the Python script
+	pythonScript := fmt.Sprintf(
+		"import cfscrape as cs; s = cs.create_scraper(); print(s.get_cookie_string('%s', timeout=%f, headers={'user-agent': '%s'})[0])",
+		url.String(),
+		client.Timeout.Seconds(),
+		UserAgent,
+	)
+	log.WithFields(log.Fields{
+		"pythonScript": pythonScript,
+	}).Debug("Built the Python script")
+
+	// Launch Python script (-c meaning everything will be launched inline)
+	cmd := exec.Command("python", "-c", pythonScript)
+
+	// Get the standard and error outputs
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
+	if err != nil || errStr != "" {
+		return nil, fmt.Errorf(
+			"could not get HTTP response from Python when trying to solve the Clouflare challenge: %v\n%v",
+			errStr, outStr)
+	}
+	log.WithFields(log.Fields{
+		"url":     url,
+		"cookies": outStr,
+	}).Debug("Successfully got HTTP response from Python and retrieved cookies when trying to solve the Clouflare challenge")
+
+	// Add the cookies to the client by extracting them from string.
+	// Here is a typical outStr:
+	// cf_clearance=0240fd594eaf5b4d9566a1bc9bf78699ddaac989-1550053902-10800-150; __cfduid=dba1aba9532aa1b8e75b98670c0e0eb7e1550053894
+	cookiesList := strings.Split(outStr, ";")
+	newCookie1 := &http.Cookie{
+		Name:  strings.TrimSpace(strings.Replace(strings.Split(cookiesList[0], "=")[0], "\n", "", -1)),
+		Value: strings.TrimSpace(strings.Replace(strings.Split(cookiesList[0], "=")[1], "\n", "", -1)),
+	}
+	log.WithFields(log.Fields{
+		"cookieName":  newCookie1.Name,
+		"cookieValue": newCookie1.Value,
+	}).Debug("Successfully added Clouflare cookie 1 to client")
+	newCookie2 := &http.Cookie{
+		Name:  strings.TrimSpace(strings.Replace(strings.Split(cookiesList[1], "=")[0], "\n", "", -1)),
+		Value: strings.TrimSpace(strings.Replace(strings.Split(cookiesList[1], "=")[1], "\n", "", -1)),
+	}
+	log.WithFields(log.Fields{
+		"cookieName":  newCookie2.Name,
+		"cookieValue": newCookie2.Value,
+	}).Debug("Successfully added Clouflare cookie 2 to client")
+	cookies := client.Jar.Cookies(&url)
+	cookies = append(cookies, newCookie1)
+	cookies = append(cookies, newCookie2)
+	client.Jar.SetCookies(&url, cookies)
+	log.Debug("Successfully added Clouflare cookies to client")
+
+	return client, nil
 }
 
 // FetchFromCloudflare fetches data from a Cloudflare protected webpage.
