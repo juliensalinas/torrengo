@@ -72,7 +72,7 @@ func BypassCloudflare(url url.URL, client *http.Client) (*http.Client, error) {
 	}).Debug("Built the Python script")
 
 	// Launch Python script (-c meaning everything will be launched inline)
-	cmd := exec.Command("python", "-c", pythonScript)
+	cmd := exec.Command("python3", "-c", pythonScript)
 
 	// Get the standard and error outputs
 	var stdout, stderr bytes.Buffer
