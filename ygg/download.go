@@ -47,16 +47,16 @@ func FindAndDlFile(descURL string, userID string, userPass string, timeout time.
 	defer resp.Body.Close()
 
 	// Parse html response
-	fileURL, err := parseDescPage(resp.Body)
+	filePath, err := parseDescPage(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
 
-	// Download torrent
-	filePath, err := core.DlFile(fileURL, client)
+	fileURL := "https://" + baseURL + filePath
+	filePathOnDisk, err := core.DlFile(fileURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}
 
-	return filePath, nil
+	return filePathOnDisk, nil
 }
