@@ -21,7 +21,6 @@ import (
 
 	"github.com/juliensalinas/torrengo/arc"
 	"github.com/juliensalinas/torrengo/otts"
-	"github.com/juliensalinas/torrengo/td"
 	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/juliensalinas/torrengo/ygg"
 )
@@ -32,7 +31,6 @@ var lineBreak string
 // sources maps source short names to real names
 var sources = map[string]string{
 	"arc":  "Archive",
-	"td":   "Torrent Downloads",
 	"tpb":  "The Pirate Bay",
 	"otts": "1337x",
 	"ygg":  "Ygg Torrent",
@@ -148,11 +146,6 @@ func getTorrentFile(userID, userPass string, timeout time.Duration, httpClient *
 			"sourceToSearch": "arc",
 		}).Debug("Download torrent file")
 		ft.filePath, err = arc.FindAndDlFile(ft.descURL, timeout)
-	case "td":
-		log.WithFields(log.Fields{
-			"sourceToSearch": "td",
-		}).Debug("Download torrent file")
-		ft.filePath, err = td.DlFile(ft.fileURL, timeout)
 	case "ygg":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "ygg",
@@ -251,7 +244,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
-		"you want to search."+lineBreak+"Choices: arc (Archive.org) | td (TorrentDownloads) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
+		"you want to search."+lineBreak+"Choices: arc (Archive.org) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
 	timeoutInMillisecPtr := flag.Int("t", 5000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
 	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
@@ -279,10 +272,10 @@ func main() {
 	cleanedUsrSourcesSlc := rmDuplicates(usrSourcesSlc)
 	for _, usrSource := range cleanedUsrSourcesSlc {
 		if usrSource == "all" {
-			cleanedUsrSourcesSlc = []string{"arc", "td", "tpb", "otts", "ygg"}
+			cleanedUsrSourcesSlc = []string{"arc", "tpb", "otts", "ygg"}
 			break
 		}
-		if usrSource != "arc" && usrSource != "td" && usrSource != "tpb" && usrSource != "otts" && usrSource != "ygg" {
+		if usrSource != "arc" && usrSource != "tpb" && usrSource != "otts" && usrSource != "ygg" {
 			fmt.Printf("This website is not correct: %v%v", usrSource, lineBreak)
 			log.WithFields(log.Fields{
 				"sourcesList": cleanedUsrSourcesSlc,
@@ -307,14 +300,12 @@ func main() {
 
 	// Channels for results
 	arcTorListCh := make(chan []torrent)
-	tdTorListCh := make(chan []torrent)
 	tpbTorListCh := make(chan []torrent)
 	ottsTorListCh := make(chan []torrent)
 	yggTorListAndHTTPClientCh := make(chan torListAndHTTPClient)
 
 	// Channels for errors
 	arcSearchErrCh := make(chan error)
-	tdSearchErrCh := make(chan error)
 	tpbSearchErrCh := make(chan error)
 	ottsSearchErrCh := make(chan error)
 	yggSearchErrCh := make(chan error)
@@ -350,33 +341,6 @@ func main() {
 					torList = append(torList, t)
 				}
 				arcTorListCh <- torList
-			}()
-
-		// User wants to search td
-		case "td":
-			go func() {
-				log.WithFields(log.Fields{
-					"input":          s.in,
-					"sourceToSearch": "td",
-				}).Debug("Start search goroutine")
-				tdTorrents, err := td.Lookup(s.in, timeout)
-				if err != nil {
-					tdSearchErrCh <- err
-					return
-				}
-				var torList []torrent
-				for _, tdTorrent := range tdTorrents {
-					t := torrent{
-						descURL:  tdTorrent.DescURL,
-						name:     tdTorrent.Name,
-						size:     tdTorrent.Size,
-						leechers: tdTorrent.Leechers,
-						seeders:  tdTorrent.Seeders,
-						source:   "td",
-					}
-					torList = append(torList, t)
-				}
-				tdTorListCh <- torList
 			}()
 
 		// User wants to search tpb
@@ -466,7 +430,7 @@ func main() {
 	}
 
 	// Initialize search errors
-	var tdSearchErr, arcSearchErr, tpbSearchErr, ottsSearchErr, yggSearchErr error
+	var arcSearchErr, tpbSearchErr, ottsSearchErr, yggSearchErr error
 
 	// Gather all goroutines results
 	for _, source := range s.sourcesToLookup {
@@ -485,22 +449,6 @@ func main() {
 				log.WithFields(log.Fields{
 					"input":          s.in,
 					"sourceToSearch": "arc",
-				}).Debug("Got search results from goroutine")
-			}
-		case "td":
-			// Get results or error from td
-			select {
-			case tdSearchErr = <-tdSearchErrCh:
-				fmt.Printf("An error occured during search on %v%v", sources["td"], lineBreak)
-				log.WithFields(log.Fields{
-					"input": s.in,
-					"error": tdSearchErr,
-				}).Error("The td search goroutine broke")
-			case tdTorList := <-tdTorListCh:
-				s.out = append(s.out, tdTorList...)
-				log.WithFields(log.Fields{
-					"input":          s.in,
-					"sourceToSearch": "td",
 				}).Debug("Got search results from goroutine")
 			}
 		case "tpb":
@@ -555,7 +503,7 @@ func main() {
 		}
 	}
 	// Stop the program only if all goroutines returned an error
-	if arcSearchErr != nil && tdSearchErr != nil && tpbSearchErr != nil && ottsSearchErr != nil && yggSearchErr != nil {
+	if arcSearchErr != nil && tpbSearchErr != nil && ottsSearchErr != nil && yggSearchErr != nil {
 		fmt.Println("All searches returned an error.")
 		log.WithFields(log.Fields{
 			"input": s.in,
@@ -657,74 +605,6 @@ func main() {
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath, torrentClient)
-		}
-	case "td":
-		log.WithFields(log.Fields{
-			"sourceToSearch": "td",
-		}).Debug("Extract magnet and torrent file url")
-		ft.fileURL, ft.magnet, err = td.ExtractTorAndMag(ft.descURL, timeout)
-		if err != nil {
-			fmt.Println("An error occured while retrieving magnet and torrent file.")
-			log.WithFields(log.Fields{
-				"descURL":         ft.descURL,
-				"sourcesToLookup": s.sourcesToLookup,
-				"error":           err,
-			}).Fatal("Could not retrieve magnet and torrent file")
-		}
-		switch {
-		case ft.fileURL == "" && ft.magnet != "":
-			log.WithFields(log.Fields{
-				"torrentURL": ft.fileURL,
-			}).Debug("Could not find a torrent file but successfully fetched a magnet link on the description page")
-			fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
-			if launchClient == "y" {
-				openMagOrTorInClient(ft.magnet, torrentClient)
-			}
-		case ft.fileURL != "" && ft.magnet == "":
-			log.WithFields(log.Fields{
-				"magnetLink": ft.magnet,
-			}).Debug("Could not find a magnet link but successfully fetched a torrent file on the description page")
-			getTorrentFile("", "", timeout, nil)
-			fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
-			if launchClient == "y" {
-				openMagOrTorInClient(ft.filePath, torrentClient)
-			}
-		default:
-			log.WithFields(log.Fields{
-				"torrentURL": ft.fileURL,
-				"magnetLink": ft.magnet,
-			}).Debug("Successfully fetched a torrent file and a magnet link on the description page")
-			// Ask user to choose between file download and magnet download
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Println("We found a torrent file and a magnet link, which one would you like to download?" +
-				lineBreak + "[1] Magnet link" + lineBreak + "[2] Torrent file")
-			var choice int
-			for {
-				choiceStr, err := reader.ReadString('\n')
-				if err != nil {
-					fmt.Println("Could not read your input, please enter your choice (1 or 2):")
-					continue
-				}
-				choice, err = strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(choiceStr, lineBreak)))
-				if err != nil {
-					fmt.Println("Please enter an integer:")
-					continue
-				}
-				break
-			}
-			switch choice {
-			case 1:
-				fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
-				if launchClient == "y" {
-					openMagOrTorInClient(ft.magnet, torrentClient)
-				}
-			case 2:
-				getTorrentFile("", "", timeout, nil)
-				fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
-				if launchClient == "y" {
-					openMagOrTorInClient(ft.filePath, torrentClient)
-				}
-			}
 		}
 	case "tpb":
 		fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
