@@ -119,7 +119,7 @@ func render(torrents []torrent) {
 			t.uplDate,
 			sources[t.source],
 		}
-		renderedTorrents = append(renderedTorrents, renderedTorrent)
+		renderedTorrents = append([][]string{renderedTorrent}, renderedTorrents...)
 	}
 
 	// Render results using tablewriter
