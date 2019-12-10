@@ -620,18 +620,18 @@ func main() {
 
 	// Read from user input whether he wants to open torrent in Deluge or QBittorrent client
 	reader = bufio.NewReader(os.Stdin)
-	fmt.Println("Do you want to open torrent in Deluge (d) or QBittorrent (q)?")
+	fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), or Transmission (t)?")
 	var torrentClientAbbr string
 	for {
 		torrentClientAbbrStr, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Could not read your input, please try again (should be 'd' or 'q'):")
+			fmt.Println("Could not read your input, please try again (should be 'd', 'q' or 't'):")
 			continue
 		}
 		// Remove delimiter which depends on OS + white spaces if any
 		torrentClientAbbr = strings.TrimSpace(strings.TrimSuffix(torrentClientAbbrStr, lineBreak))
-		if torrentClientAbbr != "d" && torrentClientAbbr != "q" {
-			fmt.Println("Please enter a valid torrent client. It should be 'd' or 'q':")
+		if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" {
+			fmt.Println("Please enter a valid torrent client. It should be 'd', 'q' or 't':")
 			continue
 		}
 		break
@@ -644,6 +644,8 @@ func main() {
 		torrentClient = "deluge"
 	case "q":
 		torrentClient = "qbittorrent"
+	case "t":
+		torrentClient = "transmission-gtk"
 	}
 
 	// Download torrent and optionnaly open in torrent client

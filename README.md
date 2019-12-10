@@ -12,7 +12,7 @@ Nice supported features:
 * given that The Pirate Bay urls are changing quite often, this program concurrently launches a search on all The Pirate Bay urls found on <https://proxybay.bz> and retrieves torrents from the fastest response (the returned url is also checked in-depth because some proxies sometimes return a page with no error but the page actually does not have any result)
 * torrent file search and download on <http://torrentdownloads.me> and <http://www.yggtorrent.gg> is protected by Cloudflare, so this program bypasses the protection by answering Cloudflare's Javascript challenges
 * <http://www.yggtorrent.gg> can be searched freely, but an account is needed to download the torrent file, so the program authenticates the user before downloading the torrent file
-* downloaded torrents can be launched in Deluge or QBittorrent
+* downloaded torrents can be launched in Deluge, QBittorrent, or Transmission
 * a timeout can be set so long-running requests are ignored
 
 Current supported sources are the following:
@@ -72,5 +72,5 @@ If some sources are too slow to respond, use a timeout. For example the followin
 
 Some sources give both a magnet link and a torrent file (you can choose which one you want), some only give a torrent file, and some only give a magnet link.
 
-Optionally you can open the torrent file or magnet link directly in your torrent client (**Deluge** and **QBittorrent** are supported for the moment).
+Optionally you can open the torrent file or magnet link directly in your torrent client (**Deluge**, **QBittorrent** or **Transmission** are supported for the moment).
 
