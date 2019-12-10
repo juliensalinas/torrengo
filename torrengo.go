@@ -169,14 +169,14 @@ func getTorrentFile(userID, userPass string, timeout time.Duration, httpClient *
 }
 
 // openMagOrTorInClient opens magnet link or torrent file in user torrent client
-func openMagOrTorInClient(resource string) {
+func openMagOrTorInClient(resource string, torrentClient string) {
 	// Open torrent in client
 	log.WithFields(log.Fields{
 		"resource": resource,
-		"client":   "Deluge",
+		"client":   torrentClient,
 	}).Debug("Opening magnet link or torrent file with torrent client")
 	fmt.Println("Opening torrent in client...")
-	cmd := exec.Command("deluge", resource)
+	cmd := exec.Command(torrentClient, resource)
 
 	// Use Start() instead of Run() because do not want to wait for the torrent
 	// client process to complete (detached process).
@@ -185,7 +185,7 @@ func openMagOrTorInClient(resource string) {
 		fmt.Println("Could not open your torrent in client, you need to do it manually (see logs for more details).")
 		log.WithFields(log.Fields{
 			"resource": resource,
-			"client":   "Deluge",
+			"client":   torrentClient,
 			"error":    err,
 		}).Fatal("Could not open torrent in client")
 	}
@@ -605,7 +605,7 @@ func main() {
 
 	// Read from user input whether he wants to open torrent in client or not
 	reader = bufio.NewReader(os.Stdin)
-	fmt.Println("Do you want to open torrent in Deluge client? [y / n]")
+	fmt.Println("Do you want to open torrent in torrent client? [y / n]")
 	var launchClient string
 	for {
 		launchClientStr, err := reader.ReadString('\n') // returns string + delimiter
@@ -618,13 +618,41 @@ func main() {
 		break
 	}
 
+	// Read from user input whether he wants to open torrent in Deluge or QBittorrent client
+	reader = bufio.NewReader(os.Stdin)
+	fmt.Println("Do you want to open torrent in Deluge (d) or QBittorrent (q)?")
+	var torrentClientAbbr string
+	for {
+		torrentClientAbbrStr, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Could not read your input, please try again (should be 'd' or 'q'):")
+			continue
+		}
+		// Remove delimiter which depends on OS + white spaces if any
+		torrentClientAbbr = strings.TrimSpace(strings.TrimSuffix(torrentClientAbbrStr, lineBreak))
+		if torrentClientAbbr != "d" && torrentClientAbbr != "q" {
+			fmt.Println("Please enter a valid torrent client. It should be 'd' or 'q':")
+			continue
+		}
+		break
+	}
+
+	// Convert user input into proper torrent client name
+	var torrentClient string
+	switch torrentClientAbbr {
+	case "d":
+		torrentClient = "deluge"
+	case "q":
+		torrentClient = "qbittorrent"
+	}
+
 	// Download torrent and optionnaly open in torrent client
 	switch ft.source {
 	case "arc":
 		getTorrentFile("", "", timeout, nil)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
-			openMagOrTorInClient(ft.filePath)
+			openMagOrTorInClient(ft.filePath, torrentClient)
 		}
 	case "td":
 		log.WithFields(log.Fields{
@@ -646,7 +674,7 @@ func main() {
 			}).Debug("Could not find a torrent file but successfully fetched a magnet link on the description page")
 			fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
 			if launchClient == "y" {
-				openMagOrTorInClient(ft.magnet)
+				openMagOrTorInClient(ft.magnet, torrentClient)
 			}
 		case ft.fileURL != "" && ft.magnet == "":
 			log.WithFields(log.Fields{
@@ -655,7 +683,7 @@ func main() {
 			getTorrentFile("", "", timeout, nil)
 			fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 			if launchClient == "y" {
-				openMagOrTorInClient(ft.filePath)
+				openMagOrTorInClient(ft.filePath, torrentClient)
 			}
 		default:
 			log.WithFields(log.Fields{
@@ -684,20 +712,20 @@ func main() {
 			case 1:
 				fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
 				if launchClient == "y" {
-					openMagOrTorInClient(ft.magnet)
+					openMagOrTorInClient(ft.magnet, torrentClient)
 				}
 			case 2:
 				getTorrentFile("", "", timeout, nil)
 				fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 				if launchClient == "y" {
-					openMagOrTorInClient(ft.filePath)
+					openMagOrTorInClient(ft.filePath, torrentClient)
 				}
 			}
 		}
 	case "tpb":
 		fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
 		if launchClient == "y" {
-			openMagOrTorInClient(ft.magnet)
+			openMagOrTorInClient(ft.magnet, torrentClient)
 		}
 	case "otts":
 		log.WithFields(log.Fields{
@@ -714,7 +742,7 @@ func main() {
 		}
 		fmt.Printf("Here is your magnet link: %s%s%s", lineBreak, ft.magnet, lineBreak)
 		if launchClient == "y" {
-			openMagOrTorInClient(ft.magnet)
+			openMagOrTorInClient(ft.magnet, torrentClient)
 		}
 	case "ygg":
 		var userID string
@@ -748,7 +776,7 @@ func main() {
 		getTorrentFile(userID, userPass, timeout, s.httpClient)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
-			openMagOrTorInClient(ft.filePath)
+			openMagOrTorInClient(ft.filePath, torrentClient)
 		}
 	}
 }
