@@ -618,23 +618,25 @@ func main() {
 		break
 	}
 
-	// Read from user input whether he wants to open torrent in Deluge or QBittorrent client
-	reader = bufio.NewReader(os.Stdin)
-	fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), or Transmission (t)?")
 	var torrentClientAbbr string
-	for {
-		torrentClientAbbrStr, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Could not read your input, please try again (should be 'd', 'q' or 't'):")
-			continue
+	if launchClient == "y" {
+		// Read from user input whether he wants to open torrent in Deluge or QBittorrent client
+		reader = bufio.NewReader(os.Stdin)
+		fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), or Transmission (t)?")
+		for {
+			torrentClientAbbrStr, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("Could not read your input, please try again (should be 'd', 'q' or 't'):")
+				continue
+			}
+			// Remove delimiter which depends on OS + white spaces if any
+			torrentClientAbbr = strings.TrimSpace(strings.TrimSuffix(torrentClientAbbrStr, lineBreak))
+			if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" {
+				fmt.Println("Please enter a valid torrent client. It should be 'd', 'q' or 't':")
+				continue
+			}
+			break
 		}
-		// Remove delimiter which depends on OS + white spaces if any
-		torrentClientAbbr = strings.TrimSpace(strings.TrimSuffix(torrentClientAbbrStr, lineBreak))
-		if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" {
-			fmt.Println("Please enter a valid torrent client. It should be 'd', 'q' or 't':")
-			continue
-		}
-		break
 	}
 
 	// Convert user input into proper torrent client name
