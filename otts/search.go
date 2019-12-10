@@ -42,7 +42,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const baseURL string = "https://1337x.to"
+const baseURL string = "https://www.1377x.to"
 
 // Torrent contains meta information about the torrent
 type Torrent struct {
