@@ -35,12 +35,6 @@ Each website's scraper is an independent library that can be installed and reuse
 
 * `go get github.com/juliensalinas/torrengo/arc`
 
-The following dependencies are required if you want to be able to search/download torrent files from <http://www.yggtorrent.gg> in order to bypass the Cloudlare protection:
-
-* Python (2 or 3)
-* Python's cfscrape library (`pip install cfscrape`)
-* NodeJS
-
 ### Usage
 
 Searching "Dumas Montecristo" from all sources is as simple as:
@@ -71,4 +65,3 @@ If some sources are too slow to respond, use a timeout. For example the followin
 Some sources give both a magnet link and a torrent file (you can choose which one you want), some only give a torrent file, and some only give a magnet link.
 
 Optionally you can open the torrent file or magnet link directly in your torrent client (**Deluge**, **QBittorrent** or **Transmission** are supported for the moment).
-
