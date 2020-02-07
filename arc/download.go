@@ -21,22 +21,23 @@ func parseDescPage(r io.Reader) (string, error) {
 
 	// Get the torrent file path from a "<a href=...>"" whose class starts with
 	// "format-summary" and whose text contains the word "TORRENT"
-	fileType := doc.Find(".format-summary ").First().Text()
-	if fileType == "" {
-		return "", fmt.Errorf("could not find the .format-summary tag on description page")
+	var fileURL string
+	doc.Find(".format-summary ").EachWithBreak(func(i int, s *goquery.Selection) bool {
+		if strings.Contains(s.Text(), "TORRENT") {
+			path, ok := s.Attr("href")
+			if ok {
+				fileURL = baseURL + path
+			}
+			return false
+		}
+		return true
+	})
+
+	if fileURL != "" {
+		return fileURL, nil
 	}
 
-	if !strings.Contains(fileType, "TORRENT") {
-		return "", fmt.Errorf("could not find the TORRENT string in fileType")
-	}
-
-	path, ok := doc.Find(".format-summary ").First().Attr("href")
-	if !ok {
-		return "", fmt.Errorf("could not find a torrent file on the description page")
-	}
-	fileURL := baseURL + path
-
-	return fileURL, nil
+	return "", fmt.Errorf("could not find a torrent file on the description page")
 }
 
 // FindAndDlFile opens the torrent description page and downloads the torrent
