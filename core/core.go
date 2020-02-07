@@ -7,7 +7,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/laplaceon/cfbypass"
 	log "github.com/sirupsen/logrus"
@@ -67,10 +69,12 @@ func BypassCloudflare(url url.URL, client *http.Client) (*http.Client, error) {
 
 // DlFile downloads the torrent with a custom client created by user and returns the path of
 // downloaded file.
-func DlFile(fileURL string, client *http.Client) (string, error) {
+// The name of the downloaded file is made up of the search arguments + the
+// Unix timestamp to avoid collision. Ex: comte_de_montecristo_1581064034469619222.torrent
+func DlFile(fileURL string, in string, client *http.Client) (string, error) {
 	// Get torrent file name from url
-	s := strings.Split(fileURL, "/")
-	fileName := s[len(s)-1]
+	fileName := strings.Replace(in, " ", "_", -1)
+	fileName += "_" + strconv.Itoa(int(time.Now().UnixNano())) + ".torrent"
 
 	// Create local torrent file
 	out, err := os.Create(fileName)

@@ -138,19 +138,20 @@ func render(torrents []torrent) {
 }
 
 // getTorrentFile retrieves and displays torrent file to user
-func getTorrentFile(userID, userPass string, timeout time.Duration, httpClient *http.Client) {
+func getTorrentFile(userID, in string, userPass string, timeout time.Duration, httpClient *http.Client) {
 	var err error
 	switch ft.source {
 	case "arc":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "arc",
 		}).Debug("Download torrent file")
-		ft.filePath, err = arc.FindAndDlFile(ft.descURL, timeout)
+		ft.filePath, err = arc.FindAndDlFile(ft.descURL, in, timeout)
 	case "ygg":
 		log.WithFields(log.Fields{
 			"sourceToSearch": "ygg",
 		}).Debug("Download torrent file")
-		ft.filePath, err = ygg.FindAndDlFile(ft.descURL, userID, userPass, timeout, httpClient)
+		ft.filePath, err = ygg.FindAndDlFile(
+			ft.descURL, in, userID, userPass, timeout, httpClient)
 	}
 	if err != nil {
 		fmt.Println("Could not retrieve the torrent file (see logs for more details).")
@@ -601,7 +602,7 @@ func main() {
 	// Download torrent and optionnaly open in torrent client
 	switch ft.source {
 	case "arc":
-		getTorrentFile("", "", timeout, nil)
+		getTorrentFile("", s.in, "", timeout, nil)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath, torrentClient)
@@ -657,7 +658,7 @@ func main() {
 			userPass = strings.TrimSpace(strings.TrimSuffix(rawUserPass, lineBreak))
 			break
 		}
-		getTorrentFile(userID, userPass, timeout, s.httpClient)
+		getTorrentFile(userID, s.in, userPass, timeout, s.httpClient)
 		fmt.Printf("Here is your torrent file: %s%s%s", lineBreak, ft.filePath, lineBreak)
 		if launchClient == "y" {
 			openMagOrTorInClient(ft.filePath, torrentClient)
