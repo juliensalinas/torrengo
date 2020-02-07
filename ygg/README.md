@@ -4,12 +4,6 @@
 
 See [here the Go documentation](https://godoc.org/github.com/juliensalinas/torrengo/ygg) of this library.
 
-The following dependencies are required if you want to be able to search/download torrent files from <http://yggtorrent.se> in order to bypass the Cloudlare protection:
-
-* Python (2 or 3)
-* Python's cfscrape library (`pip install cfscrape`)
-* NodeJS
-
 Torrents can be searched freely on Ygg Torrent, but an account is needed to download the torrent file. This library authenticates the user before downloading the torrent file.
 
 The **Lookup** function searches yggtorrent and returns a clean list of torrents. For each torrent the following info is retrieved:
