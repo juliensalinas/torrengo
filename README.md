@@ -10,8 +10,8 @@ Nice supported features:
 
 * the user decides which sources he wants to search (all sources are searched by default) and the search is done **concurrently**
 * given that The Pirate Bay urls are changing quite often, this program concurrently launches a search on all The Pirate Bay urls found on <https://proxybay.bz> and retrieves torrents from the fastest response (the returned url is also checked in-depth because some proxies sometimes return a page with no error but the page actually does not have any result)
-* torrent file search and download on <http://www.yggtorrent.gg> is protected by Cloudflare, so this program bypasses the protection by answering Cloudflare's Javascript challenges
-* <http://www.yggtorrent.gg> can be searched freely, but an account is needed to download the torrent file, so the program authenticates the user before downloading the torrent file
+* torrent file search and download on <http://www.yggtorrent.**> is protected by Cloudflare, so this program bypasses the protection by answering Cloudflare's Javascript challenges
+* <http://www.yggtorrent.**> can be searched freely, but an account is needed to download the torrent file, so the program authenticates the user before downloading the torrent file
 * downloaded torrents can be launched in Deluge, QBittorrent, or Transmission
 * a timeout can be set so long-running requests are ignored
 
@@ -20,7 +20,7 @@ Current supported sources are the following:
 1. <https://archive.org> (called **arc** internally)
 1. all The Pirate Bay urls located on <https://proxybay.bz> (called **tpb** internally)
 1. <http://1337x.to> (called **otts** internally)
-1. <http://www.yggtorrent.gg> (previously t411, called **ygg** internally)
+1. <http://www.yggtorrent.**> (previously t411, called **ygg** internally)
 
 **Caution!** Apart from Archive.org, the websites above might host some illegal content and in some countries their use might be prohibited. Read [legal issues regarding The Pirate Bay](https://en.wikipedia.org/wiki/The_Pirate_Bay#Legal_issues) for example. Neither I, nor the tool shall be held responsible for any action taken against you for using Torrengo on the above-mentioned sites.
 
@@ -52,7 +52,7 @@ Sources names:
 * <https://archive.org>: arc
 * all The Pirate Bay urls located on <https://proxybay.bz>: tpb
 * <http://1337x.to>: otts
-* <https://www.yggtorrent.gg>: ygg
+* <https://www.yggtorrent.**>: ygg
 
 If you want to search from multiple sources (let's say Archive.org and ThePirateBay), use commas:
 
