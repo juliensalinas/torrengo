@@ -137,8 +137,11 @@ func render(torrents []torrent) {
 	table.Render()
 }
 
-// getTorrentFile retrieves and displays torrent file to user
-func getTorrentFile(userID, in string, userPass string, timeout time.Duration, httpClient *http.Client) {
+// getTorrentFile retrieves and displays torrent file to user.
+// TODO(juliensalinas): pass a proper context.Context object instead
+// of a mere timeout.
+func getTorrentFile(userID, in string, userPass string,
+	timeout time.Duration, httpClient *http.Client) {
 	var err error
 	switch ft.source {
 	case "arc":
