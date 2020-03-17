@@ -16,8 +16,8 @@ func parseDescPage(r io.Reader) (string, error) {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
 
-	// file url is located in the 1st <a> of the 2nd <td> of the second <tbody> of class infos-torrents
-	fileURL, ok := doc.Find(".infos-torrent tbody").Eq(1).Find("tr td").Eq(1).Find("a").Eq(0).First().Attr("href")
+	// file url is located in the 1st <a> of the 2nd <td> of the first <tbody> of class infos-torrents
+	fileURL, ok := doc.Find(".infos-torrent tbody").Eq(0).Find("tr td").Eq(1).Find("a").Eq(0).First().Attr("href")
 	if !ok {
 		return "", fmt.Errorf("could not find a torrent file on the description page")
 	}
