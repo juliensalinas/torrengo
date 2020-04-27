@@ -151,7 +151,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, *http.Client, error) {
 
 	client, err := core.BypassCloudflare(searchURL, client)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error while fetching url: %v", err)
+		return nil, nil, fmt.Errorf("error while answering the Cloudflare challenge: %v", err)
 	}
 
 	resp, err := core.Fetch(searchURL.String(), client)
