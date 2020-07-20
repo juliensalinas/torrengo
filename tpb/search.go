@@ -62,7 +62,10 @@ func buildSearchURL(baseURL string, in string) (string, error) {
 		return "", fmt.Errorf("error during url parsing: %v", err)
 	}
 
-	URL.Path += "/search/" + in + "/0/99/0"
+	URL.Path += "/search.php"
+	q := URL.Query()
+	q.Set("q", in)
+	URL.RawQuery = q.Encode()
 
 	return URL.String(), nil
 }
