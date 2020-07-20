@@ -40,7 +40,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const proxiesListURL = "https://proxybay.bz/"
+const proxiesListURL = "https://pirateproxy.wtf"
 
 // Torrent contains meta information about the torrent
 type Torrent struct {

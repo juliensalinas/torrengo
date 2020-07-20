@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
@@ -21,14 +22,14 @@ func parseProxiesPage(r io.Reader) ([]string, error) {
 	var urls []string
 
 	// Results are located in a clean html <table>
-	doc.Find("#proxyList tbody tr").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".proxies tbody tr").Each(func(i int, s *goquery.Selection) {
 		// TPB site url is the href of a tag whose class is "site"
-		url, ok := s.Find(".site a ").First().Attr("href")
-		if !ok {
+		url := strings.ToLower(s.Find("a").First().Text())
+		if url == "" {
 			log.Debug("could not find an url for a proxy")
 			return
 		}
-		urls = append(urls, url)
+		urls = append(urls, "https://"+url)
 	})
 
 	return urls, nil
