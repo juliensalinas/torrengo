@@ -183,6 +183,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			localClient := &http.Client{
 				Timeout: localTimeout,
 			}
+			// TODO(juliensalinas): implement a Cloudflare bypass mechanism.
 			resp, err := core.Fetch(url, localClient)
 			if err != nil {
 				log.WithFields(log.Fields{
