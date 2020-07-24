@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/chromedp"
+	"github.com/chromedp/chromedp/device"
 	"github.com/laplaceon/cfbypass"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,38 +22,33 @@ import (
 // UserAgent is a customer browser user agent used in every HTTP connections
 const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
 
-// Fetch opens a url with a custom client created by user and returns the resulting html page.
-// Cannot use the straight http.Get function because need to
-// modify headers in order to set a fake user-agent.
-func Fetch(url string, client *http.Client) (*http.Response, error) {
-	req, err := http.NewRequest("GET", url, nil)
+// Fetch opens a url with a custom context passed by the caller.
+// It uses ChromeDP under the hood in order to emulate a real browser
+// running on Pixel 2 XL, and thus properly handle Javascript.
+func Fetch(ctx context.Context, url string) (string, error) {
+	var resp string
+
+	chromedpCTX, cancel := chromedp.NewContext(ctx)
+	defer cancel()
+
+	// TODO(juliensalinas): check status code of the response, but not so easy
+	// with the current version of ChromeDP. A new version should fix this:
+	// https://github.com/chromedp/chromedp/issues/105
+	err := chromedp.Run(chromedpCTX,
+		chromedp.Emulate(device.Pixel2XL),
+		chromedp.Navigate(url),
+		chromedp.ActionFunc(func(chromedpCTX context.Context) error {
+			node, err := dom.GetDocument().Do(chromedpCTX)
+			if err != nil {
+				return err
+			}
+			resp, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
+			return err
+		}),
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("could not create request: %v", err)
-	}
-
-	req.Header.Set("User-Agent", UserAgent)
-
-	log.WithFields(log.Fields{
-		"httpMethod":   req.Method,
-		"url":          req.URL,
-		"httpProtocol": req.Proto,
-		"host":         req.Host,
-		"headers":      req.Header,
-	}).Debug("Successfully built HTTP request")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("could not launch request: %v", err)
-	}
-
-	log.WithFields(log.Fields{
-		"httpStatus": resp.Status,
-		"headers":    resp.Header,
-	}).Debug("Successfully received HTTP response")
-
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
+		return "", fmt.Errorf("could not download page: %w", err)
 	}
 
 	return resp, nil
