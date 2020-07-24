@@ -18,9 +18,8 @@
 package arc
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -68,9 +67,9 @@ func buildSearchURL(in string) (string, error) {
 
 // parse parses an html slice of bytes and returns a clean list
 // of torrents found in this page
-func parseSearchPage(r io.Reader) ([]Torrent, error) {
+func parseSearchPage(html string) ([]Torrent, error) {
 	// Load html response into GoQuery
-	doc, err := goquery.NewDocumentFromReader(r)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -108,9 +107,9 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // with a custom timeout, and returns clean torrent information fetched from archive.org
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	// Create an http client with user timeout
-	client := &http.Client{
-		Timeout: timeout,
-	}
+	// client := &http.Client{
+	// 	Timeout: timeout,
+	// }
 
 	// Build url
 	url, err := buildSearchURL(in)
@@ -119,14 +118,13 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	}
 
 	// Fetch url
-	resp, err := core.Fetch(url, client)
+	html, err := core.Fetch(context.TODO(), url)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
 	// Parse html response
-	torrents, err := parseSearchPage(resp.Body)
+	torrents, err := parseSearchPage(html)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}

@@ -1,8 +1,8 @@
 package arc
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -12,9 +12,9 @@ import (
 )
 
 // parseDescPage parses the torrent description page and extracts the torrent file url
-func parseDescPage(r io.Reader) (string, error) {
+func parseDescPage(html string) (string, error) {
 	// Load html response into GoQuery
-	doc, err := goquery.NewDocumentFromReader(r)
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -51,14 +51,13 @@ func FindAndDlFile(descURL string, in string, timeout time.Duration) (string, er
 	}
 
 	// Fetch url
-	resp, err := core.Fetch(descURL, client)
+	html, err := core.Fetch(context.TODO(), descURL)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
 	// Parse html response
-	fileURL, err := parseDescPage(resp.Body)
+	fileURL, err := parseDescPage(html)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
