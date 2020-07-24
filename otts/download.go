@@ -1,9 +1,9 @@
 package otts
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"strings"
 	"time"
 
 	"github.com/juliensalinas/torrengo/core"
@@ -12,8 +12,8 @@ import (
 )
 
 // parseDescPage parses the torrent description page and extracts the magnet link
-func parseDescPage(r io.Reader) (string, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
+func parseDescPage(html string) (string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -29,17 +29,16 @@ func parseDescPage(r io.Reader) (string, error) {
 // ExtractMag opens the torrent description page and extracts the magnet link.
 // A user timeout is set.
 func ExtractMag(descURL string, timeout time.Duration) (string, error) {
-	client := &http.Client{
-		Timeout: timeout,
-	}
+	// client := &http.Client{
+	// 	Timeout: timeout,
+	// }
 
-	resp, err := core.Fetch(descURL, client)
+	html, err := core.Fetch(context.TODO(), descURL)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
-	magnet, err := parseDescPage(resp.Body)
+	magnet, err := parseDescPage(html)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}

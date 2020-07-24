@@ -29,11 +29,11 @@
 package otts
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/juliensalinas/torrengo/core"
@@ -69,8 +69,8 @@ func buildSearchURL(in string) (string, error) {
 	return URL.String(), nil
 }
 
-func parseSearchPage(r io.Reader) ([]Torrent, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
+func parseSearchPage(html string) ([]Torrent, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -123,22 +123,21 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 // Lookup takes a user search as a parameter, launches the http request
 // with a custom timeout, and returns clean torrent information fetched from 1337x.to
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
-	client := &http.Client{
-		Timeout: timeout,
-	}
+	// client := &http.Client{
+	// 	Timeout: timeout,
+	// }
 
 	url, err := buildSearchURL(in)
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
 
-	resp, err := core.Fetch(url, client)
+	html, err := core.Fetch(context.TODO(), url)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
-	torrents, err := parseSearchPage(resp.Body)
+	torrents, err := parseSearchPage(html)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}
