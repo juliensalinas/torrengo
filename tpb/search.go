@@ -137,7 +137,7 @@ func checkEmptyResp(html string) bool {
 		return false
 	}
 
-	if doc.Find("#searchResult").Nodes == nil {
+	if doc.Find("#torrents").Nodes == nil {
 		return false
 	}
 
