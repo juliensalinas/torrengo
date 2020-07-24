@@ -1,17 +1,18 @@
 package ygg
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/juliensalinas/torrengo/core"
 )
 
-func parseDescPage(r io.Reader) (string, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
+func parseDescPage(html string) (string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return "", fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -35,20 +36,19 @@ func FindAndDlFile(descURL string, in string, userID string, userPass string,
 	client.Timeout = timeout
 
 	// Authenticate user and create http client that handles cookie and timeout
-	client, err := authUser(userID, userPass, client)
-	if err != nil {
-		return "", fmt.Errorf("error while authenticating: %v", err)
-	}
+	// client, err := authUser(userID, userPass, client)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error while authenticating: %v", err)
+	// }
 
 	// Fetch url
-	resp, err := core.Fetch(descURL, client)
+	html, err := core.Fetch(context.TODO(), descURL)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
 	// Parse html response
-	filePath, err := parseDescPage(resp.Body)
+	filePath, err := parseDescPage(html)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}

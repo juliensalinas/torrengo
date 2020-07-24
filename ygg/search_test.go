@@ -6,8 +6,12 @@ import (
 )
 
 func TestLookup(t *testing.T) {
-	_, _, err := Lookup("Le comte de Montecristo", 5*time.Second)
+	torrents, _, err := Lookup("Monte cristo", 5*time.Second)
 	if err != nil {
-		t.Fatalf("Cannot search torrent: %v", err)
+		t.Fatal(err)
+	}
+
+	if len(torrents) == 0 {
+		t.Fatal("Not torrent found.")
 	}
 }

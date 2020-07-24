@@ -28,12 +28,13 @@
 package ygg
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -46,7 +47,8 @@ import (
 // const baseURL = "www2.yggtorrent.gg"
 // const baseURL = "www2.yggtorrent.ch"
 // const baseURL = "www2.yggtorrent.ws"
-const baseURL = "www2.yggtorrent.se"
+// const baseURL = "www2.yggtorrent.se"
+const baseURL = "www2.yggtorrent.si"
 
 // searchURL is the url used to retrieve a list of torrents based on user keywords.
 // A typical final url looks like:
@@ -74,8 +76,8 @@ type Torrent struct {
 	Leechers int
 }
 
-func parseSearchPage(r io.Reader) ([]Torrent, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
+func parseSearchPage(html string) ([]Torrent, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -149,18 +151,12 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, *http.Client, error) {
 	searchParams.Add("name", in)
 	searchURL.RawQuery = searchParams.Encode()
 
-	client, err := core.BypassCloudflare(searchURL, client)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error while answering the Cloudflare challenge: %v", err)
-	}
-
-	resp, err := core.Fetch(searchURL.String(), client)
+	html, err := core.Fetch(context.TODO(), searchURL.String())
 	if err != nil {
 		return nil, nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
-	torrents, err := parseSearchPage(resp.Body)
+	torrents, err := parseSearchPage(html)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}

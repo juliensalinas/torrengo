@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,8 +14,6 @@ import (
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/device"
-	"github.com/laplaceon/cfbypass"
-	log "github.com/sirupsen/logrus"
 )
 
 // UserAgent is a customer browser user agent used in every HTTP connections
@@ -26,7 +23,7 @@ const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/5
 // It uses ChromeDP under the hood in order to emulate a real browser
 // running on Pixel 2 XL, and thus properly handle Javascript.
 func Fetch(ctx context.Context, url string) (string, error) {
-	var resp string
+	var html string
 
 	chromedpCTX, cancel := chromedp.NewContext(ctx)
 	defer cancel()
@@ -42,7 +39,7 @@ func Fetch(ctx context.Context, url string) (string, error) {
 			if err != nil {
 				return err
 			}
-			resp, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
+			html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
 			return err
 		}),
 	)
@@ -51,19 +48,7 @@ func Fetch(ctx context.Context, url string) (string, error) {
 		return "", fmt.Errorf("could not download page: %w", err)
 	}
 
-	return resp, nil
-}
-
-// BypassCloudflare validates the Clouflare's Javascript challenge.
-// Once the challenge is resolved, it passes 2 new Cloudflare cookies to the client
-// so every new requests won't be challenged anymore.
-func BypassCloudflare(url url.URL, client *http.Client) (*http.Client, error) {
-	cookies := client.Jar.Cookies(&url)
-	cookies = append(cookies, cfbypass.GetTokens(url.String(), UserAgent, "")...)
-	client.Jar.SetCookies(&url, cookies)
-	log.Debug("Successfully added Clouflare cookies to client")
-
-	return client, nil
+	return html, nil
 }
 
 // DlFile downloads the torrent with a custom client created by user and returns the path of
