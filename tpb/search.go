@@ -144,6 +144,8 @@ func checkEmptyResp(html string) bool {
 // the quickest one after checking that the latter is not broken.
 // A custom user timeout is set.
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
+	// TODO(juliensalinas): replace custom clients with context in all
+	// packages.
 	client := &http.Client{
 		Timeout: timeout,
 	}
