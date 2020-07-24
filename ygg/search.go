@@ -138,6 +138,9 @@ func parseSearchPage(html string) ([]Torrent, error) {
 // Lookup takes a user search as a parameter, launches the http request
 // with a custom timeout, and returns clean torrent information fetched from Ygg Torrent.
 // Ygg has a Cloudflare protection so we need to use the FetchFromCloudflare utility.
+//
+// TODO(juliensalinas): fix comments from all packages following ChromeDP
+// integrations.
 func Lookup(in string, timeout time.Duration) ([]Torrent, *http.Client, error) {
 	// Init cookies.
 	// Using the publicsuffix list is recommended by Go docs
