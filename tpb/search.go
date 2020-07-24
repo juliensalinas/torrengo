@@ -78,52 +78,45 @@ func parseSearchPage(html string) ([]Torrent, error) {
 	// its name, its size, its seeders, and its leechers
 	var torrents []Torrent
 
-	// Get the total number of items found
-	l := doc.Find("#searchResult tbody tr").Size()
-
-	// Results are located in a clean html <table>
-	doc.Find("#searchResult tbody tr").Each(func(i int, s *goquery.Selection) {
-		// Last line of the table is not relevant
-		if i < l-1 {
-			var t Torrent
-			// Magnet is the href of the 4th <a> tag
-			magnet, ok := s.Find("a").Eq(3).First().Attr("href")
-			if !ok {
-				log.Debug("Could not find a magnet for a torrent so ignoring it")
-				return
-			}
-			t.Magnet = magnet
-
-			// Torrent name is the text of a tag whose class is "detLink"
-			t.Name = s.Find(".detLink").First().Text()
-
-			// Size and upload date are concatenated in a string in a <font> tag.
-			// Each piece of info is comma separated.
-			// We then remove spaces and unneeded text.
-			text := s.Find("font").First().Text()
-			textSlc := strings.Split(text, ",")
-			if len(textSlc) > 1 { // A security just in case
-				t.UplDate = strings.TrimSpace(strings.Replace(textSlc[0], "Uploaded", "", -1))
-				t.Size = strings.TrimSpace(strings.Replace(textSlc[1], "Size", "", -1))
-			}
-			// Seeders and leechers are located in the 3rd and 4th <td>.
-			// We convert it to integers and if conversion fails we convert it to -1.
-			seedersStr := s.Find("td").Eq(2).First().Text()
-			seeders, err := strconv.Atoi(seedersStr)
-			if err != nil {
-				seeders = -1
-			}
-			t.Seeders = seeders
-
-			leechersStr := s.Find("td").Eq(3).First().Text()
-			leechers, err := strconv.Atoi(leechersStr)
-			if err != nil {
-				leechers = -1
-			}
-			t.Leechers = leechers
-
-			torrents = append(torrents, t)
+	// Results are located in a clean list
+	doc.Find("#torrents li").Each(func(i int, s *goquery.Selection) {
+		var t Torrent
+		// Magnet is the href of the 4th <a> tag
+		magnet, ok := s.Find("span").Eq(3).Find("a").First().Attr("href")
+		if !ok {
+			log.Debug("Could not find a magnet for a torrent so ignoring it")
+			return
 		}
+		t.Magnet = magnet
+
+		// Torrent name is the text of the <a> tag in the 2nd <span>
+		t.Name = s.Find("span").Eq(1).Find("a").First().Text()
+
+		// Upload date, size, seeders, and leechers, are the text of
+		// other <span> tags.
+		t.UplDate = s.Find("span").Eq(2).Text()
+		t.Size = s.Find("span").Eq(4).Text()
+
+		// We convert seeders and leechers to integers and
+		// conversion fails we convert it to -1.
+		seedersStr := s.Find("span").Eq(5).Text()
+		seedersStr = strings.TrimSpace(seedersStr)
+		seeders, err := strconv.Atoi(seedersStr)
+
+		if err != nil {
+			seeders = -1
+		}
+		t.Seeders = seeders
+
+		leechersStr := s.Find("span").Eq(6).Text()
+		leechersStr = strings.TrimSpace(leechersStr)
+		leechers, err := strconv.Atoi(leechersStr)
+		if err != nil {
+			leechers = -1
+		}
+		t.Leechers = leechers
+
+		torrents = append(torrents, t)
 	})
 
 	return torrents, nil
