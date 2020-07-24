@@ -1,8 +1,8 @@
 package tpb
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -12,8 +12,8 @@ import (
 )
 
 // parseProxiesPage retrieves all the tpb urls from the html page
-func parseProxiesPage(r io.Reader) ([]string, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
+func parseProxiesPage(html string) ([]string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -37,13 +37,12 @@ func parseProxiesPage(r io.Reader) ([]string, error) {
 
 // getProxies returns a list of all tpb urls
 func getProxies(client *http.Client) ([]string, error) {
-	resp, err := core.Fetch(proxiesListURL, client)
+	html, err := core.Fetch(context.TODO(), proxiesListURL)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-	defer resp.Body.Close()
 
-	urls, err := parseProxiesPage(resp.Body)
+	urls, err := parseProxiesPage(html)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}

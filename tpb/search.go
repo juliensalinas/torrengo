@@ -25,10 +25,8 @@
 package tpb
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -70,8 +68,8 @@ func buildSearchURL(baseURL string, in string) (string, error) {
 	return URL.String(), nil
 }
 
-func parseSearchPage(r io.Reader) ([]Torrent, error) {
-	doc, err := goquery.NewDocumentFromReader(r)
+func parseSearchPage(html string) ([]Torrent, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return nil, fmt.Errorf("could not load html response into GoQuery: %v", err)
 	}
@@ -133,8 +131,8 @@ func parseSearchPage(r io.Reader) ([]Torrent, error) {
 
 // checkEmptyResp checks whether the tpb response contains the
 // #searchResult id, otherwise it means the site is broken
-func checkEmptyResp(r io.Reader) bool {
-	doc, err := goquery.NewDocumentFromReader(r)
+func checkEmptyResp(html string) bool {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
 		return false
 	}
@@ -165,8 +163,8 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 
 	// Create channels for communicating http response and termination
 	// event in case of error
-	httpRespCh := make(chan *http.Response)
-	httpRespErrCh := make(chan struct{})
+	htmlCh := make(chan string)
+	htmlErrCh := make(chan struct{})
 
 	// For each tpb proxy, launch the same request through a new
 	// goroutine
@@ -180,39 +178,31 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			continue
 		}
 		go func(url string, localTimeout time.Duration) {
-			localClient := &http.Client{
-				Timeout: localTimeout,
-			}
-			// TODO(juliensalinas): implement a Cloudflare bypass mechanism.
-			resp, err := core.Fetch(url, localClient)
+			// localClient := &http.Client{
+			// 	Timeout: localTimeout,
+			// }
+			html, err := core.Fetch(context.TODO(), url)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"url": url,
-				}).Debug("Broken proxy (no code 200)")
-				httpRespErrCh <- struct{}{}
+				}).Debug("Broken proxy")
+				htmlErrCh <- struct{}{}
 				return
 			}
-			// A resp.Body cannot be read twice, so need to first extract
-			// extract bodyBytes and use ioutil.NopCloser on it each time we
-			// want to read the body.
-			// Could be optimized because here we read the body 3 times instead
-			// of 2 (should retrieve bodyBytes whithin checkEmptyResp when it
-			// is read for the first time).
-			bodyBytes, _ := ioutil.ReadAll(resp.Body)
-			resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-			ok := checkEmptyResp(resp.Body)
+
+			ok := checkEmptyResp(html)
 			if !ok {
 				log.WithFields(log.Fields{
 					"url": url,
 				}).Debug("Broken proxy (code 200 but empty response)")
-				httpRespErrCh <- struct{}{}
+				htmlErrCh <- struct{}{}
 				return
 			}
 			log.WithFields(log.Fields{
 				"url": url,
 			}).Debug("Found a working proxy")
-			resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-			httpRespCh <- resp
+
+			htmlCh <- html
 		}(fullURL, timeout)
 
 	}
@@ -225,13 +215,13 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	// and leave.
 	for i := 0; i < len(proxiesList); i++ {
 		select {
-		case <-httpRespErrCh:
-		case resp := <-httpRespCh:
-			torrents, err = parseSearchPage(resp.Body)
+		case <-htmlErrCh:
+		case html := <-htmlCh:
+			torrents, err = parseSearchPage(html)
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 			}
-			resp.Body.Close()
+
 			return torrents, nil
 		}
 	}
