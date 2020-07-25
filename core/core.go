@@ -120,9 +120,7 @@ func setCookies(cookies []*http.Cookie) chromedp.Action {
 		})
 	}
 
-	// TODO(juliensalinas): doesn't work. Need to understand how to return a proper
-	// empty chromedp.Action.
-	return nil
+	return chromedp.ActionFunc(func(ctx context.Context) error { return nil })
 }
 
 // func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
