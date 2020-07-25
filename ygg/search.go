@@ -154,7 +154,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, *http.Client, error) {
 	searchParams.Add("name", in)
 	searchURL.RawQuery = searchParams.Encode()
 
-	html, err := core.Fetch(context.TODO(), searchURL.String())
+	html, err := core.Fetch(context.TODO(), searchURL.String(), nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error while fetching url: %v", err)
 	}

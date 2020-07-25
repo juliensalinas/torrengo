@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -36,13 +37,18 @@ func FindAndDlFile(descURL string, in string, userID string, userPass string,
 	client.Timeout = timeout
 
 	// Authenticate user and create http client that handles cookie and timeout
-	// client, err := authUser(userID, userPass, client)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error while authenticating: %v", err)
-	// }
+	client, err := authUser(userID, userPass, client)
+	if err != nil {
+		return "", fmt.Errorf("error while authenticating: %v", err)
+	}
+	decodedDescURL, err := url.ParseRequestURI(descURL)
+	if err != nil {
+		return "", fmt.Errorf("error while decoding url for cookie passing: %w", err)
+	}
+	cookies := client.Jar.Cookies(decodedDescURL)
 
 	// Fetch url
-	html, err := core.Fetch(context.TODO(), descURL)
+	html, err := core.Fetch(context.TODO(), descURL, cookies)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}

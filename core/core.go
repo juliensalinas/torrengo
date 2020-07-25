@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/device"
 )
@@ -22,7 +24,7 @@ const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/5
 // Fetch opens a url with a custom context passed by the caller.
 // It uses ChromeDP under the hood in order to emulate a real browser
 // running on Pixel 2 XL, and thus properly handle Javascript.
-func Fetch(ctx context.Context, url string) (string, error) {
+func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, error) {
 	var html string
 
 	chromedpCTX, cancel := chromedp.NewContext(ctx)
@@ -32,6 +34,7 @@ func Fetch(ctx context.Context, url string) (string, error) {
 	// with the current version of ChromeDP. A new version should fix this:
 	// https://github.com/chromedp/chromedp/issues/105
 	err := chromedp.Run(chromedpCTX,
+		setCookies(cookies),
 		chromedp.Emulate(device.Pixel2XL),
 		chromedp.Navigate(url),
 		chromedp.ActionFunc(func(chromedpCTX context.Context) error {
@@ -97,3 +100,47 @@ func DlFile(fileURL string, in string, client *http.Client) (string, error) {
 
 	return filePath, nil
 }
+
+func setCookies(cookies []*http.Cookie) chromedp.Action {
+	for _, cookie := range cookies {
+		return chromedp.ActionFunc(func(ctx context.Context) error {
+			expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+			success, err := network.SetCookie(cookie.Name, cookie.Value).
+				WithExpires(&expr).
+				WithDomain("localhost").
+				WithHTTPOnly(true).
+				Do(ctx)
+			if err != nil {
+				return err
+			}
+			if !success {
+				return fmt.Errorf("could not set cookie %q to %q", cookie.Name, cookie.Value)
+			}
+			return nil
+		})
+	}
+
+	// TODO(juliensalinas): doesn't work. Need to understand how to return a proper
+	// empty chromedp.Action.
+	return nil
+}
+
+// func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
+// 	return chromedp.ActionFunc(func(ctx context.Context) error {
+// 		expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+// 		success, err := network.SetCookie(name, value).
+// 			WithExpires(&expr).
+// 			WithDomain(domain).
+// 			WithPath(path).
+// 			WithHTTPOnly(httpOnly).
+// 			WithSecure(secure).
+// 			Do(ctx)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		if !success {
+// 			return fmt.Errorf("could not set cookie %s", name)
+// 		}
+// 		return nil
+// 	})
+// }
