@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,39 +21,6 @@ import (
 
 // UserAgent is a customer browser user agent used in every HTTP connections
 const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
-
-// Fetch opens a url with a custom context passed by the caller.
-// It uses ChromeDP under the hood in order to emulate a real browser
-// running on Pixel 2 XL, and thus properly handle Javascript.
-func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, error) {
-	var html string
-
-	chromedpCTX, cancel := chromedp.NewContext(ctx)
-	defer cancel()
-
-	// TODO(juliensalinas): check status code of the response, but not so easy
-	// with the current version of ChromeDP. A new version should fix this:
-	// https://github.com/chromedp/chromedp/issues/105
-	err := chromedp.Run(chromedpCTX,
-		setCookies(cookies),
-		chromedp.Emulate(device.Pixel2XL),
-		chromedp.Navigate(url),
-		chromedp.ActionFunc(func(chromedpCTX context.Context) error {
-			node, err := dom.GetDocument().Do(chromedpCTX)
-			if err != nil {
-				return err
-			}
-			html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
-			return err
-		}),
-	)
-
-	if err != nil {
-		return "", fmt.Errorf("could not download page: %w", err)
-	}
-
-	return html, nil
-}
 
 // DlFile downloads the torrent with a custom client created by user and returns the path of
 // downloaded file.
@@ -101,7 +69,53 @@ func DlFile(fileURL string, in string, client *http.Client) (string, error) {
 	return filePath, nil
 }
 
-func setCookies(cookies []*http.Cookie) chromedp.Action {
+// Fetch opens a url with a custom context passed by the caller.
+// It uses ChromeDP under the hood in order to emulate a real browser
+// running on Pixel 2 XL, and thus properly handle Javascript.
+func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, error) {
+	var html string
+
+	chromedpCTX, cancel := chromedp.NewContext(ctx)
+	defer cancel()
+
+	// TODO(juliensalinas): check status code of the response
+	err := chromedp.Run(chromedpCTX,
+		clearCookies(chromedpCTX),
+		setCookies(chromedpCTX, cookies),
+		chromedp.Emulate(device.Pixel2XL),
+		chromedp.Navigate(url),
+		// TODO(juliensalinas): use network.getResponseBody instead
+		chromedp.ActionFunc(func(chromedpCTX context.Context) error {
+			node, err := dom.GetDocument().Do(chromedpCTX)
+			if err != nil {
+				return err
+			}
+			html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
+			return err
+		}),
+		getCookies(),
+	)
+
+	if err != nil {
+		return "", fmt.Errorf("could not download page: %w", err)
+	}
+
+	return html, nil
+}
+
+func clearCookies(ctx context.Context) chromedp.Action {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		err := network.ClearBrowserCookies().Do(ctx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+// TODO(juliensalinas): try again to use network.SetCookies. Last
+// time it failed with "invalid parameter -32602 for some reason".
+func setCookies(ctx context.Context, cookies []*http.Cookie) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		for _, cookie := range cookies {
 			expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
@@ -127,6 +141,19 @@ func setCookies(cookies []*http.Cookie) chromedp.Action {
 			return fmt.Errorf("cookies not properly set")
 		}
 
+		return nil
+	})
+}
+
+func getCookies() chromedp.Action {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		cookies, err := network.GetAllCookies().Do(ctx)
+		if err != nil {
+			return err
+		}
+		for i, cookie := range cookies {
+			log.Printf("chrome cookie %d: %+v", i, cookie)
+		}
 		return nil
 	})
 }
