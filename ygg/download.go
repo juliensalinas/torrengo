@@ -53,6 +53,11 @@ func FindAndDlFile(descURL string, in string, userID string, userPass string,
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
 
+	// Check if authentication properly worked
+	if !strings.Contains(html, "Télécharger le torrent") {
+		return "", fmt.Errorf("authentication error: %v", err)
+	}
+
 	// Parse html response
 	filePath, err := parseDescPage(html)
 	if err != nil {

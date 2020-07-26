@@ -105,8 +105,6 @@ func setCookies(cookies []*http.Cookie) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		for _, cookie := range cookies {
 			expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
-			fmt.Println(cookie.Name)
-			fmt.Println(cookie.Value)
 			success, err := network.SetCookie(cookie.Name, cookie.Value).
 				WithExpires(&expr).
 				WithDomain("yggtorrent.si").
@@ -120,6 +118,7 @@ func setCookies(cookies []*http.Cookie) chromedp.Action {
 				return fmt.Errorf("could not set cookie %q to %q", cookie.Name, cookie.Value)
 			}
 		}
+
 		cookiesInBrowser, err := network.GetAllCookies().Do(ctx)
 		if err != nil {
 			return err
@@ -127,6 +126,7 @@ func setCookies(cookies []*http.Cookie) chromedp.Action {
 		if len(cookiesInBrowser) != len(cookies) {
 			return fmt.Errorf("cookies not properly set")
 		}
+
 		return nil
 	})
 }
