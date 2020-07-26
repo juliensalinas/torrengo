@@ -102,12 +102,15 @@ func DlFile(fileURL string, in string, client *http.Client) (string, error) {
 }
 
 func setCookies(cookies []*http.Cookie) chromedp.Action {
-	for _, cookie := range cookies {
-		return chromedp.ActionFunc(func(ctx context.Context) error {
+	return chromedp.ActionFunc(func(ctx context.Context) error {
+		for _, cookie := range cookies {
 			expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+			fmt.Println(cookie.Name)
+			fmt.Println(cookie.Value)
 			success, err := network.SetCookie(cookie.Name, cookie.Value).
 				WithExpires(&expr).
-				WithDomain("localhost").
+				WithDomain("yggtorrent.si").
+				WithPath("/").
 				WithHTTPOnly(true).
 				Do(ctx)
 			if err != nil {
@@ -116,12 +119,43 @@ func setCookies(cookies []*http.Cookie) chromedp.Action {
 			if !success {
 				return fmt.Errorf("could not set cookie %q to %q", cookie.Name, cookie.Value)
 			}
-			return nil
-		})
-	}
-
-	return chromedp.ActionFunc(func(ctx context.Context) error { return nil })
+		}
+		cookiesInBrowser, err := network.GetAllCookies().Do(ctx)
+		if err != nil {
+			return err
+		}
+		if len(cookiesInBrowser) != len(cookies) {
+			return fmt.Errorf("cookies not properly set")
+		}
+		return nil
+	})
 }
+
+// func setCookies(cookies []*http.Cookie) chromedp.Action {
+// 	var cps []*network.CookieParam
+// 	expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+
+// 	for _, cookie := range cookies {
+// 		cp := network.CookieParam{
+// 			Name:     cookie.Name,
+// 			Value:    cookie.Value,
+// 			Expires:  &expr,
+// 			Domain:   "yggtorrent.si",
+// 			Path:     "/",
+// 			HTTPOnly: true,
+// 		}
+// 		cps = append(cps, &cp)
+// 	}
+
+// 	return chromedp.ActionFunc(func(ctx context.Context) error {
+// 		err := network.SetCookies(cps).
+// 			Do(ctx)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	})
+// }
 
 // func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
 // 	return chromedp.ActionFunc(func(ctx context.Context) error {
