@@ -24,11 +24,11 @@ const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/5
 
 var cookieExpiry = time.Now().Add(10 * time.Minute)
 
-// DlFile downloads the torrent with a custom client created by user and returns the path of
+// DlFileWithoutChrome downloads the torrent with a custom client created by user and returns the path of
 // downloaded file.
 // The name of the downloaded file is made up of the search arguments + the
 // Unix timestamp to avoid collision. Ex: comte_de_montecristo_1581064034469619222.torrent
-func DlFile(fileURL string, in string, client *http.Client) (string, error) {
+func DlFileWithoutChrome(fileURL string, in string, client *http.Client) (string, error) {
 	// Get torrent file name from url
 	fileName := strings.Replace(in, " ", "_", -1)
 	fileName += "_" + strconv.Itoa(int(time.Now().UnixNano())) + ".torrent"

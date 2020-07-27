@@ -58,7 +58,7 @@ func FindAndDlFile(descURL string, in string, userID string, userPass string,
 	}
 
 	fileURL := "https://" + baseURL + filePath
-	filePathOnDisk, err := core.DlFile(fileURL, in, client)
+	filePathOnDisk, err := core.DlFileWithoutChrome(fileURL, in, client)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}

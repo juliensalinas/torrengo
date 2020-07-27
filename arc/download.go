@@ -63,7 +63,7 @@ func FindAndDlFile(descURL string, in string, timeout time.Duration) (string, er
 	}
 
 	// Download torrent
-	filePath, err := core.DlFile(fileURL, in, client)
+	filePath, err := core.DlFileWithoutChrome(fileURL, in, client)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)
 	}
