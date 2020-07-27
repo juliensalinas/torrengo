@@ -73,30 +73,30 @@ func DlFileWithoutChrome(fileURL string, in string, client *http.Client) (string
 
 // FetchWithoutChrome fetches a URL using Go http client under the hood
 // instead of Chrome.
-func FetchWithoutChrome(url string, client *http.Client) (string, error) {
+func FetchWithoutChrome(url string, client *http.Client) (string, *http.Client, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", fmt.Errorf("could not create request: %v", err)
+		return "", nil, fmt.Errorf("could not create request: %v", err)
 	}
 
 	req.Header.Set("User-Agent", UserAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("could not launch request: %v", err)
+		return "", nil, fmt.Errorf("could not launch request: %v", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return "", fmt.Errorf("status code error: %v", resp.StatusCode)
+		return "", nil, fmt.Errorf("status code error: %v", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("can't read response body: %w", err)
+		return "", nil, fmt.Errorf("can't read response body: %w", err)
 	}
 
-	return string(body), nil
+	return string(body), client, nil
 }
 
 // Fetch opens a url with custom context and cookies passed by the caller.

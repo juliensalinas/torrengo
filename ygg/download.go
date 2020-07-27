@@ -41,7 +41,7 @@ func FindAndDlFile(descURL string, in string, userID string, userPass string,
 	}
 
 	// Fetch url
-	html, err := core.FetchWithoutChrome(descURL, client)
+	html, client, err := core.FetchWithoutChrome(descURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
