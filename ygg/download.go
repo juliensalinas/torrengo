@@ -17,7 +17,7 @@ func parseDescPage(html string) (string, error) {
 	}
 
 	// file url is located in the 1st <a> of the 2nd <td> of the first <tbody> of class infos-torrents
-	fileURL, ok := doc.Find(".infos-torrent tbody").Eq(0).Find("tr td").Eq(1).Find("a").Eq(0).First().Attr("href")
+	fileURL, ok := doc.Find(".infos-torrent tbody tr").First().Find("td").Eq(1).Find("a").First().Attr("href")
 	if !ok {
 		return "", fmt.Errorf("could not find a torrent file on the description page")
 	}
