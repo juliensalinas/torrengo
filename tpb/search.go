@@ -201,9 +201,6 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	// http response. If http response received, it means the tpb proxy
 	// worked properly and was the fastest to answer so parse results from html page
 	// and leave.
-	//
-	// TODO(juliensalinas): once we have a working proxy, close all the other
-	// pending goroutines.
 	for i := 0; i < len(proxiesList); i++ {
 		select {
 		case <-htmlErrCh:
