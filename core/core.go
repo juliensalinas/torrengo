@@ -70,6 +70,8 @@ func DlFile(fileURL string, in string, client *http.Client) (string, error) {
 	return filePath, nil
 }
 
+// FetchWithoutChrome fetches a URL using Go http client under the hood
+// instead of Chrome.
 func FetchWithoutChrome(url string, client *http.Client) (string, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -109,7 +111,7 @@ func FetchWithoutChrome(url string, client *http.Client) (string, error) {
 	return string(body), nil
 }
 
-// Fetch opens a url with a custom context passed by the caller.
+// Fetch opens a url with custom context and cookies passed by the caller.
 // It uses ChromeDP under the hood in order to emulate a real browser
 // running on Pixel 2 XL, and thus properly handle Javascript.
 func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, []*http.Cookie, error) {
@@ -122,7 +124,6 @@ func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, []*
 
 	// TODO(juliensalinas): check status code of the response
 	err := chromedp.Run(chromedpCTX,
-		clearCookies(chromedpCTX),
 		setCookies(chromedpCTX, cookies),
 		chromedp.Emulate(device.Pixel2XL),
 		chromedp.Navigate(url),
@@ -157,6 +158,7 @@ func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, []*
 	return html, newCookies, nil
 }
 
+// convertCookies converts ChromeDP cookies to Go http cookies.
 func convertCookies(cookies []*network.Cookie) []*http.Cookie {
 	var newCookies []*http.Cookie
 
@@ -174,16 +176,6 @@ func convertCookies(cookies []*network.Cookie) []*http.Cookie {
 	}
 
 	return newCookies
-}
-
-func clearCookies(ctx context.Context) chromedp.Action {
-	return chromedp.ActionFunc(func(ctx context.Context) error {
-		err := network.ClearBrowserCookies().Do(ctx)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
 }
 
 // TODO(juliensalinas): try again to use network.SetCookies. Last
@@ -217,62 +209,3 @@ func setCookies(ctx context.Context, cookies []*http.Cookie) chromedp.Action {
 		return nil
 	})
 }
-
-func getCookies() chromedp.Action {
-	return chromedp.ActionFunc(func(ctx context.Context) error {
-		cookies, err := network.GetAllCookies().Do(ctx)
-		if err != nil {
-			return err
-		}
-		for i, cookie := range cookies {
-			log.Printf("chrome cookie %d: %+v", i, cookie)
-		}
-		return nil
-	})
-}
-
-// func setCookies(cookies []*http.Cookie) chromedp.Action {
-// 	var cps []*network.CookieParam
-// 	expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
-
-// 	for _, cookie := range cookies {
-// 		cp := network.CookieParam{
-// 			Name:     cookie.Name,
-// 			Value:    cookie.Value,
-// 			Expires:  &expr,
-// 			Domain:   "yggtorrent.si",
-// 			Path:     "/",
-// 			HTTPOnly: true,
-// 		}
-// 		cps = append(cps, &cp)
-// 	}
-
-// 	return chromedp.ActionFunc(func(ctx context.Context) error {
-// 		err := network.SetCookies(cps).
-// 			Do(ctx)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	})
-// }
-
-// func SetCookie(name, value, domain, path string, httpOnly, secure bool) chromedp.Action {
-// 	return chromedp.ActionFunc(func(ctx context.Context) error {
-// 		expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
-// 		success, err := network.SetCookie(name, value).
-// 			WithExpires(&expr).
-// 			WithDomain(domain).
-// 			WithPath(path).
-// 			WithHTTPOnly(httpOnly).
-// 			WithSecure(secure).
-// 			Do(ctx)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		if !success {
-// 			return fmt.Errorf("could not set cookie %s", name)
-// 		}
-// 		return nil
-// 	})
-// }
