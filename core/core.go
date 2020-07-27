@@ -23,6 +23,8 @@ import (
 // UserAgent is a customer browser user agent used in every HTTP connections
 const UserAgent string = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36"
 
+var cookieExpiry = time.Now().Add(10 * time.Minute)
+
 // DlFile downloads the torrent with a custom client created by user and returns the path of
 // downloaded file.
 // The name of the downloaded file is made up of the search arguments + the
@@ -148,7 +150,6 @@ func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, []*
 
 			return nil
 		}),
-		// getCookies(),
 	)
 
 	if err != nil {
@@ -168,7 +169,7 @@ func convertCookies(cookies []*network.Cookie) []*http.Cookie {
 			Value:    cookie.Value,
 			Path:     cookie.Path,
 			Domain:   cookie.Domain,
-			Expires:  time.Now().Add(10 * time.Minute),
+			Expires:  cookieExpiry,
 			Secure:   cookie.Secure,
 			HttpOnly: cookie.HTTPOnly,
 		}
@@ -178,26 +179,30 @@ func convertCookies(cookies []*network.Cookie) []*http.Cookie {
 	return newCookies
 }
 
+// setCookies retrieves Go http cookies and sets ChromeDP out of it.
+//
 // TODO(juliensalinas): try again to use network.SetCookies. Last
 // time it failed with "invalid parameter -32602 for some reason".
 func setCookies(ctx context.Context, cookies []*http.Cookie) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		for _, cookie := range cookies {
-			expr := cdp.TimeSinceEpoch(time.Now().Add(180 * 24 * time.Hour))
+			expiry := cdp.TimeSinceEpoch(cookieExpiry)
 			success, err := network.SetCookie(cookie.Name, cookie.Value).
-				WithExpires(&expr).
-				WithDomain("yggtorrent.si").
-				WithPath("/").
-				WithHTTPOnly(true).
+				WithExpires(&expiry).
+				WithDomain(cookie.Domain).
+				WithPath(cookie.Path).
+				WithHTTPOnly(cookie.HttpOnly).
+				WithSecure(cookie.Secure).
 				Do(ctx)
 			if err != nil {
 				return err
 			}
 			if !success {
-				return fmt.Errorf("could not set cookie %q to %q", cookie.Name, cookie.Value)
+				return fmt.Errorf("could not set cookie %v to %v", cookie.Name, cookie.Value)
 			}
 		}
 
+		// Check that cookies were properly set.
 		cookiesInBrowser, err := network.GetAllCookies().Do(ctx)
 		if err != nil {
 			return err
