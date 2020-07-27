@@ -10,7 +10,7 @@ Nice supported features:
 
 * the user decides which sources he wants to search (all sources are searched by default) and the search is done **concurrently**
 * given that The Pirate Bay urls are changing quite often, this program concurrently launches a search on all The Pirate Bay urls found on <https://proxybay.bz> and retrieves torrents from the fastest response (the returned url is also checked in-depth because some proxies sometimes return a page with no error but the page actually does not have any result)
-* torrent file search and download on <http://www.yggtorrent.**> is protected by Cloudflare, so this program bypasses the protection by answering Cloudflare's Javascript challenges
+* torrent file search and download on Ygg Torrent, The Pirate Bay, and 1337, are protected by the Cloudflare bot detection. In order to comply, a Google Chrome browser is used under the hood (which means that you need to have Google Chrome installed in order for this program to work).
 * <http://www.yggtorrent.**> can be searched freely, but an account is needed to download the torrent file, so the program authenticates the user before downloading the torrent file
 * downloaded torrents can be launched in Deluge, QBittorrent, or Transmission
 * a timeout can be set so long-running requests are ignored
@@ -26,10 +26,12 @@ Current supported sources are the following:
 
 ### Installation
 
+**Prerequisite:** you need to have Google Chrome installed on your system. Torrengo needs a real Google Chrome browser in order to behave like any real browser and then properly deal with Javascript.
+
 For security reasons I don't provide with compiled binaries. The program can be easily installed and compiled with the usual Go tools:
 
 1. `go get github.com/juliensalinas/torrengo`
-1. `go build github.com/juliensalinas/torrengo`
+2. `go build github.com/juliensalinas/torrengo`
 
 Each website's scraper is an independent library that can be installed and reused. For example if you only want to use the Archive.org scraping library, simply do:
 
