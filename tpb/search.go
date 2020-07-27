@@ -27,7 +27,6 @@ package tpb
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -144,25 +143,22 @@ func checkEmptyResp(html string) bool {
 // the quickest one after checking that the latter is not broken.
 // A custom user timeout is set.
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
-	// TODO(juliensalinas): replace custom clients with context in all
-	// packages.
-	client := &http.Client{
-		Timeout: timeout,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	// Retrieve tpb proxies urls
-	proxiesList, err := getProxies(client)
+	// Retrieve tpb proxies urls.
+	proxiesList, err := getProxies(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error while retrieving proxies: %v", err)
 	}
 
 	// Create channels for communicating http response and termination
-	// event in case of error
+	// event in case of error.
 	htmlCh := make(chan string)
 	htmlErrCh := make(chan struct{})
 
 	// For each tpb proxy, launch the same request through a new
-	// goroutine
+	// goroutine.
 	for _, baseURL := range proxiesList {
 		fullURL, err := buildSearchURL(baseURL, in)
 		if err != nil {
@@ -173,10 +169,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			continue
 		}
 		go func(url string, localTimeout time.Duration) {
-			// localClient := &http.Client{
-			// 	Timeout: localTimeout,
-			// }
-			html, _, err := core.Fetch(context.TODO(), url, nil)
+			html, _, err := core.Fetch(ctx, url, nil)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"url": url,

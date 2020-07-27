@@ -1,13 +1,12 @@
 package tpb
 
 import (
+	"context"
 	"testing"
-
-	"net/http"
 )
 
 func TestGetProxies(t *testing.T) {
-	urls, err := getProxies(http.DefaultClient)
+	urls, err := getProxies(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 func TestLookup(t *testing.T) {
-	torrents, err := Lookup("Monte Cristo", 5*time.Second)
+	torrents, err := Lookup("Monte Cristo", 30*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -45,24 +45,23 @@ func parseDescPage(html string) (string, error) {
 // A user timeout is set.
 // Returns the local path of downloaded torrent file.
 func FindAndDlFile(descURL string, in string, timeout time.Duration) (string, error) {
-	// Create an http client with user timeout
-	client := &http.Client{
-		Timeout: timeout,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	// Fetch url
-	html, _, err := core.Fetch(context.TODO(), descURL, nil)
+	html, _, err := core.Fetch(ctx, descURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
 
-	// Parse html response
 	fileURL, err := parseDescPage(html)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)
 	}
 
-	// Download torrent
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
 	filePath, err := core.DlFileWithoutChrome(fileURL, in, client)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading torrent file: %v", err)

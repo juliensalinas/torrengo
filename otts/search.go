@@ -123,16 +123,15 @@ func parseSearchPage(html string) ([]Torrent, error) {
 // Lookup takes a user search as a parameter, launches the http request
 // with a custom timeout, and returns clean torrent information fetched from 1337x.to
 func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
-	// client := &http.Client{
-	// 	Timeout: timeout,
-	// }
-
 	url, err := buildSearchURL(in)
 	if err != nil {
 		return nil, fmt.Errorf("error while building url: %v", err)
 	}
 
-	html, _, err := core.Fetch(context.TODO(), url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	html, _, err := core.Fetch(ctx, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}

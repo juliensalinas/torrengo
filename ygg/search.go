@@ -142,29 +142,30 @@ func parseSearchPage(html string) ([]Torrent, error) {
 // TODO(juliensalinas): fix comments from all packages following ChromeDP
 // integrations.
 func Lookup(in string, timeout time.Duration) ([]Torrent, *http.Client, error) {
-	// Init cookies.
-	// Using the publicsuffix list is recommended by Go docs
-	cookieJar, _ := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
-
-	client := &http.Client{
-		Timeout: timeout,
-		Jar:     cookieJar,
-	}
-
 	searchParams.Add("name", in)
 	searchURL.RawQuery = searchParams.Encode()
 
-	html, cookies, err := core.Fetch(context.TODO(), searchURL.String(), nil)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	html, cookies, err := core.Fetch(ctx, searchURL.String(), nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error while fetching url: %v", err)
 	}
-
-	client.Jar.SetCookies(&searchURL, cookies)
 
 	torrents, err := parseSearchPage(html)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error while parsing torrent search results: %v", err)
 	}
+
+	// Init cookies.
+	// Using the publicsuffix list is recommended by Go docs
+	cookieJar, _ := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	client := &http.Client{
+		Timeout: timeout,
+		Jar:     cookieJar,
+	}
+	client.Jar.SetCookies(&searchURL, cookies)
 
 	return torrents, client, nil
 }

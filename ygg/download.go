@@ -31,27 +31,27 @@ func parseDescPage(html string) (string, error) {
 // A user timeout is set.
 func FindAndDlFile(descURL string, in string, userID string, userPass string,
 	timeout time.Duration, client *http.Client) (string, error) {
-	// Set timeout
+	// Set timeout.
 	client.Timeout = timeout
 
-	// Authenticate user and create http client that handles cookie and timeout
+	// Authenticate user and create http client that handles cookie and timeout.
 	client, err := authUser(userID, userPass, client)
 	if err != nil {
 		return "", fmt.Errorf("error while authenticating: %v", err)
 	}
 
-	// Fetch url
+	// Fetch url.
 	html, client, err := core.FetchWithoutChrome(descURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
 
-	// Check if authentication properly worked
+	// Check if authentication properly worked.
 	if !strings.Contains(html, "Déconnexion") {
 		return "", fmt.Errorf("authentication error")
 	}
 
-	// Parse html response
+	// Parse html response.
 	filePath, err := parseDescPage(html)
 	if err != nil {
 		return "", fmt.Errorf("error while parsing torrent description page: %v", err)

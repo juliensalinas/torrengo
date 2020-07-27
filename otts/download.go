@@ -29,11 +29,10 @@ func parseDescPage(html string) (string, error) {
 // ExtractMag opens the torrent description page and extracts the magnet link.
 // A user timeout is set.
 func ExtractMag(descURL string, timeout time.Duration) (string, error) {
-	// client := &http.Client{
-	// 	Timeout: timeout,
-	// }
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
-	html, _, err := core.Fetch(context.TODO(), descURL, nil)
+	html, _, err := core.Fetch(ctx, descURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
