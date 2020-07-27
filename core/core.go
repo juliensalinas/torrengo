@@ -121,27 +121,27 @@ func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, []*
 	var newCDPCookies []*network.Cookie
 	var newCookies []*http.Cookie
 
-	chromedpCTX, cancel := chromedp.NewContext(ctx)
+	ctx, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
 	// TODO(juliensalinas): check status code of the response
-	err := chromedp.Run(chromedpCTX,
-		setCookies(chromedpCTX, cookies),
+	err := chromedp.Run(ctx,
+		setCookies(ctx, cookies),
 		chromedp.Emulate(device.Pixel2XL),
 		chromedp.Navigate(url),
-		// TODO(juliensalinas): use network.getResponseBody instead
-		chromedp.ActionFunc(func(chromedpCTX context.Context) error {
-			node, err := dom.GetDocument().Do(chromedpCTX)
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			// Retrieve HTML response.
+			node, err := dom.GetDocument().Do(ctx)
+			if err != nil {
+				return err
+			}
+			html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
 			if err != nil {
 				return err
 			}
 
-			html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
-			if err != nil {
-				return err
-			}
-
-			newCDPCookies, err = network.GetAllCookies().Do(chromedpCTX)
+			// Retrieve response cookies.
+			newCDPCookies, err = network.GetAllCookies().Do(ctx)
 			if err != nil {
 				return err
 			}
