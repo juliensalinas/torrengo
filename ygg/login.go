@@ -44,7 +44,7 @@ func authUser(userID string, userPass string, client *http.Client) (*http.Client
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("authentication failed with status code %d %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("authentication failed with status code %v", resp.StatusCode)
 	}
 
 	return client, nil

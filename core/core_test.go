@@ -9,7 +9,7 @@ import (
 func TestFetch(t *testing.T) {
 	// Testing a site that is supposed to use the Cloudflare challenge.
 	// (Checking your browser before accessing xxx).
-	html, err := Fetch(context.Background(), "https://support.litebit.eu/hc/en-us", nil)
+	html, _, err := Fetch(context.Background(), "https://support.litebit.eu/hc/en-us", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

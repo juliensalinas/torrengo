@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +17,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/chromedp/chromedp/device"
+	log "github.com/sirupsen/logrus"
 )
 
 // UserAgent is a customer browser user agent used in every HTTP connections
@@ -69,11 +70,52 @@ func DlFile(fileURL string, in string, client *http.Client) (string, error) {
 	return filePath, nil
 }
 
+func FetchWithoutChrome(url string, client *http.Client) (string, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not create request: %v", err)
+	}
+
+	req.Header.Set("User-Agent", UserAgent)
+
+	log.WithFields(log.Fields{
+		"httpMethod":   req.Method,
+		"url":          req.URL,
+		"httpProtocol": req.Proto,
+		"host":         req.Host,
+		"headers":      req.Header,
+	}).Debug("Successfully built HTTP request")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("could not launch request: %v", err)
+	}
+
+	log.WithFields(log.Fields{
+		"httpStatus": resp.Status,
+		"headers":    resp.Header,
+	}).Debug("Successfully received HTTP response")
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return "", fmt.Errorf("status code error: %v", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("can't read response body: %w", err)
+	}
+
+	return string(body), nil
+}
+
 // Fetch opens a url with a custom context passed by the caller.
 // It uses ChromeDP under the hood in order to emulate a real browser
 // running on Pixel 2 XL, and thus properly handle Javascript.
-func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, error) {
+func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, []*http.Cookie, error) {
 	var html string
+	var newCDPCookies []*network.Cookie
+	var newCookies []*http.Cookie
 
 	chromedpCTX, cancel := chromedp.NewContext(ctx)
 	defer cancel()
@@ -90,17 +132,48 @@ func Fetch(ctx context.Context, url string, cookies []*http.Cookie) (string, err
 			if err != nil {
 				return err
 			}
+
 			html, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(chromedpCTX)
-			return err
+			if err != nil {
+				return err
+			}
+
+			newCDPCookies, err = network.GetAllCookies().Do(chromedpCTX)
+			if err != nil {
+				return err
+			}
+
+			newCookies = convertCookies(newCDPCookies)
+
+			return nil
 		}),
-		getCookies(),
+		// getCookies(),
 	)
 
 	if err != nil {
-		return "", fmt.Errorf("could not download page: %w", err)
+		return "", nil, fmt.Errorf("could not download page: %w", err)
 	}
 
-	return html, nil
+	return html, newCookies, nil
+}
+
+func convertCookies(cookies []*network.Cookie) []*http.Cookie {
+	var newCookies []*http.Cookie
+
+	for _, cookie := range cookies {
+		newCookie := http.Cookie{
+			Name:     cookie.Name,
+			Value:    cookie.Value,
+			Path:     cookie.Path,
+			Domain:   cookie.Domain,
+			Expires:  time.Now().Add(10 * time.Minute),
+			Secure:   cookie.Secure,
+			HttpOnly: cookie.HTTPOnly,
+		}
+		newCookies = append(newCookies, &newCookie)
+	}
+
+	return newCookies
 }
 
 func clearCookies(ctx context.Context) chromedp.Action {

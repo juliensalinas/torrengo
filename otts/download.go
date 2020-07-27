@@ -33,7 +33,7 @@ func ExtractMag(descURL string, timeout time.Duration) (string, error) {
 	// 	Timeout: timeout,
 	// }
 
-	html, err := core.Fetch(context.TODO(), descURL, nil)
+	html, _, err := core.Fetch(context.TODO(), descURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}

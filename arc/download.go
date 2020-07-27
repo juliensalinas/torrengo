@@ -51,7 +51,7 @@ func FindAndDlFile(descURL string, in string, timeout time.Duration) (string, er
 	}
 
 	// Fetch url
-	html, err := core.Fetch(context.TODO(), descURL, nil)
+	html, _, err := core.Fetch(context.TODO(), descURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}

@@ -1,10 +1,8 @@
 package ygg
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -41,21 +39,16 @@ func FindAndDlFile(descURL string, in string, userID string, userPass string,
 	if err != nil {
 		return "", fmt.Errorf("error while authenticating: %v", err)
 	}
-	decodedDescURL, err := url.ParseRequestURI(descURL)
-	if err != nil {
-		return "", fmt.Errorf("error while decoding url for cookie passing: %w", err)
-	}
-	cookies := client.Jar.Cookies(decodedDescURL)
 
 	// Fetch url
-	html, err := core.Fetch(context.TODO(), descURL, cookies)
+	html, err := core.FetchWithoutChrome(descURL, client)
 	if err != nil {
 		return "", fmt.Errorf("error while fetching url: %v", err)
 	}
 
 	// Check if authentication properly worked
-	if !strings.Contains(html, "Télécharger le torrent") {
-		return "", fmt.Errorf("authentication error: %v", err)
+	if !strings.Contains(html, "Déconnexion") {
+		return "", fmt.Errorf("authentication error")
 	}
 
 	// Parse html response

@@ -176,7 +176,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			// localClient := &http.Client{
 			// 	Timeout: localTimeout,
 			// }
-			html, err := core.Fetch(context.TODO(), url, nil)
+			html, _, err := core.Fetch(context.TODO(), url, nil)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"url": url,

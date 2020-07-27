@@ -118,7 +118,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 	}
 
 	// Fetch url
-	html, err := core.Fetch(context.TODO(), url, nil)
+	html, _, err := core.Fetch(context.TODO(), url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error while fetching url: %v", err)
 	}
