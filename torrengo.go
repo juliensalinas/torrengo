@@ -249,7 +249,7 @@ func main() {
 	}
 	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
 		"you want to search."+lineBreak+"Choices: arc (Archive.org) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
-	timeoutInMillisecPtr := flag.Int("t", 5000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
+	timeoutInMillisecPtr := flag.Int("t", 20000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
 	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
 
