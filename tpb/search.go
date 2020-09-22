@@ -172,6 +172,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 			html, _, err := core.Fetch(ctx, url, nil)
 			if err != nil {
 				log.WithFields(log.Fields{
+					"err": err,
 					"url": url,
 				}).Debug("Broken proxy")
 				htmlErrCh <- struct{}{}
