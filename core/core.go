@@ -173,7 +173,7 @@ func setCookies(ctx context.Context, cookies []*http.Cookie) chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) error {
 		for _, cookie := range cookies {
 			expiry := cdp.TimeSinceEpoch(cookieExpiry)
-			success, err := network.SetCookie(cookie.Name, cookie.Value).
+			err := network.SetCookie(cookie.Name, cookie.Value).
 				WithExpires(&expiry).
 				WithDomain(cookie.Domain).
 				WithPath(cookie.Path).
@@ -182,9 +182,6 @@ func setCookies(ctx context.Context, cookies []*http.Cookie) chromedp.Action {
 				Do(ctx)
 			if err != nil {
 				return err
-			}
-			if !success {
-				return fmt.Errorf("could not set cookie %v to %v", cookie.Name, cookie.Value)
 			}
 		}
 

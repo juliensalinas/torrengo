@@ -5,10 +5,11 @@ go 1.14
 require (
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/andybalholm/cascadia v1.2.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
+	github.com/chromedp/cdproto v0.0.0-20210208055300-32adaa8323b6
 	github.com/chromedp/chromedp v0.5.3
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.0.3 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/onrik/logrus v0.7.0
