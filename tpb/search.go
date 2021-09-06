@@ -32,8 +32,11 @@ import (
 	"strings"
 	"time"
 
+	"torrengo/core"
+	"torrengo/overtor"
+
 	"github.com/PuerkitoBio/goquery"
-	"github.com/juliensalinas/torrengo/core"
+	"github.com/chromedp/chromedp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -142,16 +145,43 @@ func checkEmptyResp(html string) bool {
 // concurrently fetches all of them and retrieve results from
 // the quickest one after checking that the latter is not broken.
 // A custom user timeout is set.
-func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
+func Lookup(in string, timeout time.Duration, runTor bool) ([]Torrent, error) {
+
+	var proxiesList []string
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Retrieve tpb proxies urls.
-	proxiesList, err := getProxies(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error while retrieving proxies: %v", err)
-	}
+	if runTor {
+		// lets start tor and get a local addrr
+		tempProxy, err := overtor.DoTor()
+		if err != nil {
 
+			return nil, fmt.Errorf("error while connecting to TOR: %v", err)
+		}
+
+		torProxy := "socks5://" + tempProxy
+
+		ctx, cancel = chromedp.NewExecAllocator(
+			ctx,
+			append(chromedp.DefaultExecAllocatorOptions[:], chromedp.ProxyServer(torProxy))...,
+		)
+
+		defer cancel()
+
+		// rek2 - temp hardcode onion service for piratebay
+		// we could try to get list from clearnet but I think this is better to use a onion service.
+		proxiesList = []string{"http://piratebayo3klnzokct3wt5yyxb2vpebbuyjl7m623iaxmqhsd52coid.onion"}
+
+	} else {
+		var err error
+		// Retrieve tpb proxies urls.
+		proxiesList, err = getProxies(ctx)
+
+		if err != nil {
+			return nil, fmt.Errorf("error while retrieving proxies: %v", err)
+		}
+	}
 	// Create channels for communicating http response and termination
 	// event in case of error.
 	htmlCh := make(chan string)
@@ -206,6 +236,7 @@ func Lookup(in string, timeout time.Duration) ([]Torrent, error) {
 		select {
 		case <-htmlErrCh:
 		case html := <-htmlCh:
+			var err error
 			torrents, err = parseSearchPage(html)
 			if err != nil {
 				return nil, fmt.Errorf("error while parsing torrent search results: %v", err)

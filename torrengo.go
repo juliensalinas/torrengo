@@ -19,9 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 
+	"torrengo/tpb"
+
 	"github.com/juliensalinas/torrengo/arc"
 	"github.com/juliensalinas/torrengo/otts"
-	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/juliensalinas/torrengo/ygg"
 )
 
@@ -239,7 +240,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(
 			flag.CommandLine.Output(),
-			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-t timeout] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
+			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-t timeout] [-tor] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
 				"Examples:%[2]s%[2]s\tSearch 'Alexandre Dumas' on all sources:%[2]s\t\t%[1]s Alexandre Dumas%[2]s"+
 				"\tSearch 'Alexandre Dumas' on Archive.org and ThePirateBay only:%[2]s\t\t%[1]s -s arc,tpb Alexandre Dumas%[2]s%[2]s"+
 				"Options:%[2]s%[2]s",
@@ -249,7 +250,8 @@ func main() {
 	}
 	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
 		"you want to search."+lineBreak+"Choices: arc (Archive.org) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
-	timeoutInMillisecPtr := flag.Int("t", 20000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
+	timeoutInMillisecPtr := flag.Int("t", 40000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
+	runTorPtr := flag.Bool("tor", false, "Run searches over the tor network, only for tpb.\n")
 	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
 
@@ -260,6 +262,9 @@ func main() {
 	// Set logging parameters depending on the verbose user input
 	isVerbose = *isVerbosePtr
 	setLogger(isVerbose)
+
+	// Set to run tor or not
+	runTor := *runTorPtr
 
 	// If no command line argument is supplied, then we stop here
 	if len(flag.Args()) == 0 {
@@ -354,7 +359,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "tpb",
 				}).Debug("Start search goroutine")
-				tpbTorrents, err := tpb.Lookup(s.in, timeout)
+				tpbTorrents, err := tpb.Lookup(s.in, timeout, runTor)
 				if err != nil {
 					tpbSearchErrCh <- err
 					return
