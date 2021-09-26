@@ -605,6 +605,8 @@ func main() {
 		torrentClient = "qbittorrent"
 	case "t":
 		torrentClient = "transmission-gtk"
+	case "tc":
+		torrentClient = "transmission-cli"
 	}
 
 	// Download torrent and optionnaly open in torrent client
