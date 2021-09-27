@@ -19,9 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh/terminal"
 
+	"torrengo/tpb"
+
 	"github.com/juliensalinas/torrengo/arc"
 	"github.com/juliensalinas/torrengo/otts"
-	"github.com/juliensalinas/torrengo/tpb"
 	"github.com/juliensalinas/torrengo/ygg"
 )
 
@@ -167,13 +168,23 @@ func getTorrentFile(userID, in string, userPass string,
 
 // openMagOrTorInClient opens magnet link or torrent file in user torrent client
 func openMagOrTorInClient(resource string, torrentClient string) {
+	var cmd *exec.Cmd
+
 	// Open torrent in client
 	log.WithFields(log.Fields{
 		"resource": resource,
 		"client":   torrentClient,
 	}).Debug("Opening magnet link or torrent file with torrent client")
 	fmt.Println("Opening torrent in client...")
-	cmd := exec.Command(torrentClient, resource)
+
+	// lets check if torrentClient is for transmission-cli
+	// since transmission-cli is deprecated we need to use transmission-remote with an argument
+	if torrentClient == "transmission-remote" {
+		fmt.Printf("you are running: %s\n", torrentClient)
+		cmd = exec.Command(torrentClient, "-a", resource)
+	} else {
+		cmd = exec.Command(torrentClient, resource)
+	}
 
 	// Use Start() instead of Run() because do not want to wait for the torrent
 	// client process to complete (detached process).
@@ -239,7 +250,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(
 			flag.CommandLine.Output(),
-			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-t timeout] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
+			"Usage of %[1]s:%[2]s%[2]s\t%[1]s [-s sources] [-t timeout] [-tor] [-v] arg1 arg2 arg3 ...%[2]s%[2]s"+
 				"Examples:%[2]s%[2]s\tSearch 'Alexandre Dumas' on all sources:%[2]s\t\t%[1]s Alexandre Dumas%[2]s"+
 				"\tSearch 'Alexandre Dumas' on Archive.org and ThePirateBay only:%[2]s\t\t%[1]s -s arc,tpb Alexandre Dumas%[2]s%[2]s"+
 				"Options:%[2]s%[2]s",
@@ -249,7 +260,8 @@ func main() {
 	}
 	usrSourcesPtr := flag.String("s", "all", "A comma separated list of sources "+
 		"you want to search."+lineBreak+"Choices: arc (Archive.org) | tpb (ThePirateBay) | otts (1337x) | ygg (YggTorrent). ")
-	timeoutInMillisecPtr := flag.Int("t", 20000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
+	timeoutInMillisecPtr := flag.Int("t", 40000, "Timeout of HTTP requests in milliseconds. Set it to 0 to completely remove timeout.")
+	runTorPtr := flag.Bool("tor", false, "Run searches over the tor network, only for tpb.\n")
 	isVerbosePtr := flag.Bool("v", false, "Verbose mode. Use it to see more logs.")
 	flag.Parse()
 
@@ -260,6 +272,9 @@ func main() {
 	// Set logging parameters depending on the verbose user input
 	isVerbose = *isVerbosePtr
 	setLogger(isVerbose)
+
+	// Set to run tor or not
+	runTor := *runTorPtr
 
 	// If no command line argument is supplied, then we stop here
 	if len(flag.Args()) == 0 {
@@ -354,7 +369,7 @@ func main() {
 					"input":          s.in,
 					"sourceToSearch": "tpb",
 				}).Debug("Start search goroutine")
-				tpbTorrents, err := tpb.Lookup(s.in, timeout)
+				tpbTorrents, err := tpb.Lookup(s.in, timeout, runTor)
 				if err != nil {
 					tpbSearchErrCh <- err
 					return
@@ -574,17 +589,17 @@ func main() {
 	if launchClient == "y" {
 		// Read from user input whether he wants to open torrent in Deluge or QBittorrent client
 		reader = bufio.NewReader(os.Stdin)
-		fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), or Transmission (t)?")
+		fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), Transmission (t) or Transmission CLI (tc) ?")
 		for {
 			torrentClientAbbrStr, err := reader.ReadString('\n')
 			if err != nil {
-				fmt.Println("Could not read your input, please try again (should be 'd', 'q' or 't'):")
+				fmt.Println("Could not read your input, please try again (should be 'd', 'q', 't', or 'tc'):")
 				continue
 			}
 			// Remove delimiter which depends on OS + white spaces if any
 			torrentClientAbbr = strings.TrimSpace(strings.TrimSuffix(torrentClientAbbrStr, lineBreak))
-			if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" {
-				fmt.Println("Please enter a valid torrent client. It should be 'd', 'q' or 't':")
+			if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" && torrentClientAbbr != "tc" {
+				fmt.Println("Please enter a valid torrent client. It should be 'd', 'q', 't', or 'tc':")
 				continue
 			}
 			break
@@ -600,6 +615,8 @@ func main() {
 		torrentClient = "qbittorrent"
 	case "t":
 		torrentClient = "transmission-gtk"
+	case "tc":
+		torrentClient = "transmission-remote"
 	}
 
 	// Download torrent and optionnaly open in torrent client
