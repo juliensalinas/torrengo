@@ -168,13 +168,23 @@ func getTorrentFile(userID, in string, userPass string,
 
 // openMagOrTorInClient opens magnet link or torrent file in user torrent client
 func openMagOrTorInClient(resource string, torrentClient string) {
+	var cmd *exec.Cmd
+
 	// Open torrent in client
 	log.WithFields(log.Fields{
 		"resource": resource,
 		"client":   torrentClient,
 	}).Debug("Opening magnet link or torrent file with torrent client")
 	fmt.Println("Opening torrent in client...")
-	cmd := exec.Command(torrentClient, resource)
+
+	// lets check if torrentClient is for transmission-cli
+	// since transmission-cli is deprecated we need to use transmission-remote with an argument
+	if torrentClient == "transmission-remote" {
+		fmt.Printf("you are running: %s\n", torrentClient)
+		cmd = exec.Command(torrentClient, "-a", resource)
+	} else {
+		cmd = exec.Command(torrentClient, resource)
+	}
 
 	// Use Start() instead of Run() because do not want to wait for the torrent
 	// client process to complete (detached process).
@@ -579,17 +589,17 @@ func main() {
 	if launchClient == "y" {
 		// Read from user input whether he wants to open torrent in Deluge or QBittorrent client
 		reader = bufio.NewReader(os.Stdin)
-		fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), or Transmission (t)?")
+		fmt.Println("Do you want to open torrent in Deluge (d), QBittorrent (q), Transmission (t) or Transmission CLI (tc) ?")
 		for {
 			torrentClientAbbrStr, err := reader.ReadString('\n')
 			if err != nil {
-				fmt.Println("Could not read your input, please try again (should be 'd', 'q' or 't'):")
+				fmt.Println("Could not read your input, please try again (should be 'd', 'q', 't', or 'tc'):")
 				continue
 			}
 			// Remove delimiter which depends on OS + white spaces if any
 			torrentClientAbbr = strings.TrimSpace(strings.TrimSuffix(torrentClientAbbrStr, lineBreak))
-			if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" {
-				fmt.Println("Please enter a valid torrent client. It should be 'd', 'q' or 't':")
+			if torrentClientAbbr != "d" && torrentClientAbbr != "q" && torrentClientAbbr != "t" && torrentClientAbbr != "tc" {
+				fmt.Println("Please enter a valid torrent client. It should be 'd', 'q', 't', or 'tc':")
 				continue
 			}
 			break
@@ -606,7 +616,7 @@ func main() {
 	case "t":
 		torrentClient = "transmission-gtk"
 	case "tc":
-		torrentClient = "transmission-cli"
+		torrentClient = "transmission-remote"
 	}
 
 	// Download torrent and optionnaly open in torrent client
