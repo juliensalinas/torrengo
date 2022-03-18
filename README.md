@@ -20,7 +20,7 @@ Current supported sources are the following:
 1. <https://archive.org> (called **arc** internally)
 1. all The Pirate Bay urls located on <https://proxybay.bz> (called **tpb** internally)
 1. <http://1337x.to> (called **otts** internally)
-1. <http://www.yggtorrent.**> (previously t411, called **ygg** internally)
+1. <http://www.yggtorrent.**> (previously t411, called**ygg** internally)
 
 **Caution!** Apart from Archive.org, the websites above might host some illegal content and in some countries their use might be prohibited. Read [legal issues regarding The Pirate Bay](https://en.wikipedia.org/wiki/The_Pirate_Bay#Legal_issues) for example. Neither I, nor the tool shall be held responsible for any action taken against you for using Torrengo on the above-mentioned sites.
 
@@ -30,12 +30,11 @@ Current supported sources are the following:
 
 For security reasons I don't provide with compiled binaries. The program can be easily installed and compiled with the usual Go tools:
 
-1. `go get github.com/juliensalinas/torrengo`
-2. `go build github.com/juliensalinas/torrengo`
+`go install github.com/juliensalinas/torrengo@latest`
 
 Each website's scraper is an independent library that can be installed and reused. For example if you only want to use the Archive.org scraping library, simply do:
 
-* `go get github.com/juliensalinas/torrengo/arc`
+`go install github.com/juliensalinas/arc@latest`
 
 ### Usage
 
