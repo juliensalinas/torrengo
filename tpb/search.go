@@ -81,7 +81,7 @@ func parseSearchPage(html string) ([]Torrent, error) {
 	doc.Find("#torrents li").Each(func(i int, s *goquery.Selection) {
 		var t Torrent
 		// Magnet is the href of the 4th <a> tag
-		magnet, ok := s.Find("span").Eq(3).Find("a").First().Attr("href")
+		magnet, ok := s.Find("span").Eq(3).Find("a").First().Attr("h")
 		if !ok {
 			log.Debug("Could not find a magnet for a torrent so ignoring it")
 			return
