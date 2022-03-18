@@ -49,8 +49,9 @@ import (
 // const baseURL = "www2.yggtorrent.ws"
 // const baseURL = "www2.yggtorrent.se"
 // const baseURL = "www2.yggtorrent.si"
+// const baseURL = "www4.yggtorrent.li"
 
-const baseURL = "www4.yggtorrent.li"
+const baseURL = "www3.yggtorrent.re"
 
 // searchURL is the url used to retrieve a list of torrents based on user keywords.
 // A typical final url looks like:
