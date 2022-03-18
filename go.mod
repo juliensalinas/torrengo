@@ -1,20 +1,27 @@
 module github.com/juliensalinas/torrengo
 
-go 1.14
+go 1.18
 
 require (
-	github.com/PuerkitoBio/goquery v1.5.1
-	github.com/andybalholm/cascadia v1.2.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20220217222649-d8c14a5c6edf
+	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/chromedp/cdproto v0.0.0-20220310232215-0e2f46551646
 	github.com/chromedp/chromedp v0.7.8
+	github.com/olekukonko/tablewriter v0.0.5
+	github.com/onrik/logrus v0.9.0
+	github.com/sirupsen/logrus v1.8.1
+	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
+)
+
+require (
+	github.com/andybalholm/cascadia v1.3.1 // indirect
+	github.com/chromedp/sysutil v1.0.0 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
-	github.com/knq/sysutil v0.0.0-20191005231841-15668db23d08 // indirect
+	github.com/gobwas/ws v1.1.0 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/olekukonko/tablewriter v0.0.4
-	github.com/onrik/logrus v0.7.0
-	github.com/sirupsen/logrus v1.6.0
-	github.com/tidwall/gjson v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
-	golang.org/x/net v0.0.0-20200707034311-ab3426394381
+	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 )
