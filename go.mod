@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.0
-	github.com/chromedp/cdproto v0.0.0-20220310232215-0e2f46551646
+	github.com/chromedp/cdproto v0.0.0-20220217222649-d8c14a5c6edf
 	github.com/chromedp/chromedp v0.7.8
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onrik/logrus v0.9.0
